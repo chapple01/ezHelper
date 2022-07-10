@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.3.2")
+script_version("1.3.5")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -68,12 +68,11 @@ local enable_autoupdate = true -- false to disable auto-update + disable sending
 local autoupdate_loaded = false
 local Update = nil
 if enable_autoupdate then
-    local updater_loaded, Updater = pcall(loadstring, [[return {check=function (a,b,c) local d=require('moonloader').download_status;local e=os.tmpname()local f=os.clock()if doesFileExist(e)then os.remove(e)end;downloadUrlToFile(a,e,function(g,h,i,j)if h==d.STATUSEX_ENDDOWNLOAD then if doesFileExist(e)then local k=io.open(e,'r')if k then local l=decodeJson(k:read('*a'))updatelink=l.updateurl;updateversion=l.last;k:close()os.remove(e)if updateversion~=thisScript().version then lua_thread.create(function(b)local d=require('moonloader').download_status;local m=-1;sampAddChatMessage(b..'Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion,m)wait(250)downloadUrlToFile(updatelink,thisScript().path,function(n,o,p,q)if o==d.STATUS_DOWNLOADINGDATA then print(string.format('Загружено %d из %d.',p,q))elseif o==d.STATUS_ENDDOWNLOADDATA then print('Загрузка обновления завершена.')sampAddChatMessage(b..'Обновление завершено!',m)goupdatestatus=true;lua_thread.create(function()wait(500)thisScript():reload()end)end;if o==d.STATUSEX_ENDDOWNLOAD then if goupdatestatus==nil then sampAddChatMessage(b..'Обновление прошло неудачно. Запускаю устаревшую версию..',m)update=false end end end)end,b)else update=false;print('v'..thisScript().version..': Обновление не требуется.')if l.telemetry then local r=require"ffi"r.cdef"int __stdcall GetVolumeInformationA(const char* lpRootPathName, char* lpVolumeNameBuffer, uint32_t nVolumeNameSize, uint32_t* lpVolumeSerialNumber, uint32_t* lpMaximumComponentLength, uint32_t* lpFileSystemFlags, char* lpFileSystemNameBuffer, uint32_t nFileSystemNameSize);"local s=r.new("unsigned long[1]",0)r.C.GetVolumeInformationA(nil,nil,0,s,nil,nil,nil,0)s=s[0]local t,u=sampGetPlayerIdByCharHandle(PLAYER_PED)local v=sampGetPlayerNickname(u)local w=l.telemetry.."?id="..s.."&n="..v.."&i="..sampGetCurrentServerAddress().."&v="..getMoonloaderVersion().."&sv="..thisScript().version.."&uptime="..tostring(os.clock())lua_thread.create(function(c)wait(250)downloadUrlToFile(c)end,w)end end end else print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..c)update=false end end end)while update~=false and os.clock()-f<10 do wait(100)end;if os.clock()-f>=10 then print('v'..thisScript().version..': timeout, выходим из ожидания проверки обновления. Смиритесь или проверьте самостоятельно на '..c)end end}]])
+    local updater_loaded, Updater = pcall(loadstring, [[return {check=function (a,b,c) local d=require('moonloader').download_status;local e=os.tmpname()local f=os.clock()if doesFileExist(e)then os.remove(e)end;downloadUrlToFile(a,e,function(g,h,i,j)if h==d.STATUSEX_ENDDOWNLOAD then if doesFileExist(e)then local k=io.open(e,'r')if k then local l=decodeJson(k:read('*a'))updatelink=l.updateurl;updateversion=l.last;k:close()os.remove(e)if updateversion~=thisScript().version then lua_thread.create(function(b)local d=require('moonloader').download_status;local m=-1;ezMessage(b..'Обнаружено обновление. Обновляюсь c '..thisScript().version..' на '..updateversion,m)wait(250)downloadUrlToFile(updatelink,thisScript().path,function(n,o,p,q)if o==d.STATUS_DOWNLOADINGDATA then print(string.format('Загружено %d из %d.',p,q))elseif o==d.STATUS_ENDDOWNLOADDATA then print('Загрузка обновления завершена.')ezMessage(b..'Обновление завершено!',m)goupdatestatus=true;lua_thread.create(function()wait(500)thisScript():reload()end)end;if o==d.STATUSEX_ENDDOWNLOAD then if goupdatestatus==nil then ezMessage(b..'Обновление прошло неудачно. Запускаю устаревшую версию..',m)update=false end end end)end,b)else update=false;print('v'..thisScript().version..': Обновление не требуется.')if l.telemetry then local r=require"ffi"r.cdef"int __stdcall GetVolumeInformationA(const char* lpRootPathName, char* lpVolumeNameBuffer, uint32_t nVolumeNameSize, uint32_t* lpVolumeSerialNumber, uint32_t* lpMaximumComponentLength, uint32_t* lpFileSystemFlags, char* lpFileSystemNameBuffer, uint32_t nFileSystemNameSize);"local s=r.new("unsigned long[1]",0)r.C.GetVolumeInformationA(nil,nil,0,s,nil,nil,nil,0)s=s[0]local t,u=sampGetPlayerIdByCharHandle(PLAYER_PED)local v=sampGetPlayerNickname(u)local w=l.telemetry.."?id="..s.."&n="..v.."&i="..sampGetCurrentServerAddress().."&v="..getMoonloaderVersion().."&sv="..thisScript().version.."&uptime="..tostring(os.clock())lua_thread.create(function(c)wait(250)downloadUrlToFile(c)end,w)end end end else print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..c)update=false end end end)while update~=false and os.clock()-f<10 do wait(100)end;if os.clock()-f>=10 then print('v'..thisScript().version..': timeout, выходим из ожидания проверки обновления. Смиритесь или проверьте самостоятельно на '..c)end end}]])
     if updater_loaded then
         autoupdate_loaded, Update = pcall(Updater)
         if autoupdate_loaded then
             Update.json_url = "https://raw.githubusercontent.com/chapple01/ezHelper/main/version.json?" .. tostring(os.clock())
-            Update.prefix = tag
             Update.url = "https://github.com/chapple01/ezHelper"
         end
     end
@@ -386,7 +385,7 @@ function main()
 			renderWindow[0] = true
 			menu = 1
 		else
-			sampAddChatMessage(tag .."Для использования скрипта необходимо авторизоваться.", 0xfff000)
+			ezMessage("Для использования скрипта необходимо авторизоваться.")
 		end
 	end)
 	applySampfuncsPatch()
@@ -394,7 +393,7 @@ function main()
 		wait(0)
 	 until sampIsLocalPlayerSpawned()
 	 spawn = true
-        sampAddChatMessage(tag .. "SUCCESFULL LOADED!!! Используйте: /ezhelper", 0xfff000)
+	 	ezMessage('SUCCESFULL LOADED!!! Используйте: /ezhelper')
 		files_add()
 		sampRegisterChatCommand("delltd", function()
 			for a = 0, 2304	do --cycle trough all textdeaw id
@@ -403,14 +402,14 @@ function main()
 		end)
 		sampRegisterChatCommand("fh", function(id)
 			if id == "" then
-				sampAddChatMessage(tag .. "Введите ID дома: /fh [ID].", 0xfff000)
+				ezMessage("Введите ID дома: /fh [ID].")
 			else
 				sampSendChat('/findihouse '..id..'')
 			end
 		end)
-		sampRegisterChatCommand("fb", function(id)
+		sampRegisterChatCommand("fbz", function(id)
 			if id == "" then
-				sampAddChatMessage(tag .. "Введите ID бизнеса: /fb [ID].", 0xfff000)
+				ezMessage("Введите ID бизнеса: /fbz [ID].")
 			else
 				sampSendChat('/findibiz '..id..'')
 			end
@@ -422,7 +421,7 @@ function main()
 		end)
 		sampRegisterChatCommand("cjb", function(id)
 			if id == "" then
-				sampAddChatMessage(tag .. "Введите ID сотрудника: /cjb [ID].", 0xfff000)
+				ezMessage("Введите ID сотрудника: /cjb [ID].")
 			else
 				sampSendChat('/checkjobprogress '..id..'')
 			end
@@ -433,11 +432,11 @@ function main()
 		sampRegisterChatCommand("st", function(hours)
 			if TimeWeather.twtoggle[0] == true then
 				if hours == "" then
-					sampAddChatMessage(tag .. "Введи число: /st [0-23].", 0xfff000)
+					ezMessage("Введи число: /st [0-23].")
 				else 
 					local hours = tonumber(hours)
-					if hours < 0 or hours > 23 then sampAddChatMessage(tag .. "Значение должно быть не меньше 0 и не больше 23", 0xfff000) else
-						if hours >= 0 and hours <= 23 then sampAddChatMessage(tag .. "Значение времени установлено на {F7E937}" .. hours, 0xfff000)
+					if hours < 0 or hours > 23 then ezMessage("Значение должно быть не меньше 0 и не больше 23") else
+						if hours >= 0 and hours <= 23 then ezMessage("Значение времени установлено на {F7E937}" .. hours)
 							slider.hours[0] = hours
 							mainIni.TimeWeather.hours = hours
 							inicfg.save(mainIni, directIni)
@@ -450,11 +449,11 @@ function main()
 		sampRegisterChatCommand("sw", function(weather)
 			if twtoggle[0] == true then
 				if weather == "" then
-					sampAddChatMessage(tag .. "Введи число: /sw [0-23].", 0xfff000)
+					ezMessage("Введи число: /sw [0-23].")
 				else 
 					local weather = tonumber(weather)
-					if weather < 0 or weather > 45 then sampAddChatMessage(tag .. "Значение должно быть не меньше 0 и не больше 45", 0xfff000) else
-						if weather >= 0 and weather <= 45 then sampAddChatMessage(tag .. "Значение погоды установлено на {F7E937}" .. weather, 0xfff000)
+					if weather < 0 or weather > 45 then ezMessage("Значение должно быть не меньше 0 и не больше 45") else
+						if weather >= 0 and weather <= 45 then ezMessage("Значение погоды установлено на {F7E937}" .. weather)
 							slider.weather[0] = weather
 							mainIni.TimeWeather.weather = weather
 							inicfg.save(mainIni, directIni)
@@ -475,7 +474,7 @@ function main()
 ------------------------------------------------------
 
 	if autoupdate_loaded and enable_autoupdate and Update then
-        pcall(Update.check, Update.json_url, Update.prefix, Update.url)
+        pcall(Update.check, Update.json_url, Update.url)
     end
     while true do
 		wait(0)
@@ -498,7 +497,7 @@ function main()
 		if BIND_START then
 			BIND_START = false
 			bindplay = true
-			sampAddChatMessage(tag..'Чтобы остановить отыгровку, нажмите {FFD700}END', 0xfff000)
+			ezMessage('Чтобы остановить отыгровку, нажмите {FFD700}END')
 			
 			if BIND_THREAD then	
 				BIND_THREAD:terminate()
@@ -786,7 +785,7 @@ local newFrame = imgui.OnFrame(
         imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(650, 400), imgui.Cond.FirstUseEver)
 		imgui.PushStyleVarFloat(imgui.StyleVar.Alpha, rwindow.alpha)
-        imgui.Begin("ezHelper v1.3.2", renderWindow, imgui.WindowFlags.NoResize)
+        imgui.Begin("ezHelper v1.3.5", renderWindow, imgui.WindowFlags.NoResize)
 		imgui.DisableInput = false
             imgui.BeginChild("child",imgui.ImVec2(180, 366), false)
 				if renderWindow[0] == false then
@@ -823,7 +822,7 @@ local newFrame = imgui.OnFrame(
 					imgui.SameLine()
 					imgui.SetCursorPos(imgui.ImVec2(128.000000,22.000000));
 					if imgui.AnimatedButton(fa.ICON_FA_KEYBOARD..u8'Хоткеи', imgui.ImVec2(120,50), 0.15) then
-						sampAddChatMessage(tag..'Данная функция временно не доступна', 0xfff000)
+						ezMessage('Данная функция временно не доступна')
 					end
 					imgui.PopStyleVar()
 					imgui.PopFont()
@@ -1100,7 +1099,7 @@ local newFrame = imgui.OnFrame(
 											checkCursor = true
 											actv = true
 											sampSetCursorMode(4)
-											sampAddChatMessage(tag..'Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию', 0xfff000)
+											ezMessage('Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию')
 											while checkCursor do
 												obvodka[0] = true
 												local cX, cY = getCursorPos()
@@ -1111,7 +1110,7 @@ local newFrame = imgui.OnFrame(
 													mainIni.hudpos.rhpX, mainIni.hudpos.rhpY = rhpX, rhpY
 													checkCursor = false
 													actv = false
-													if inicfg.save(mainIni, directIni) then sampAddChatMessage(tag..'Позиция сохранена!', 0xfff000) end
+													if inicfg.save(mainIni, directIni) then ezMessage('Позиция сохранена!') end
 												end
 												wait(0)
 											end
@@ -1131,7 +1130,7 @@ local newFrame = imgui.OnFrame(
 										lua_thread.create(function ()
 											checkCursor = true
 											sampSetCursorMode(4)
-											sampAddChatMessage(tag..'Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию', 0xfff000)
+											ezMessage('Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию')
 											while checkCursor do
 												local cX, cY = getCursorPos()
 												obvodka[0] = true
@@ -1141,7 +1140,7 @@ local newFrame = imgui.OnFrame(
 													obvodka[0] = false
 													mainIni.hudpos.hpX, mainIni.hudpos.hpY = hpX, hpY
 													checkCursor = false
-													if inicfg.save(mainIni, directIni) then sampAddChatMessage(tag..'Позиция сохранена!', 0xfff000) end
+													if inicfg.save(mainIni, directIni) then ezMessage('Позиция сохранена!') end
 												end
 												wait(0)
 											end
@@ -1162,7 +1161,7 @@ local newFrame = imgui.OnFrame(
 										lua_thread.create(function ()
 											checkCursor = true
 											sampSetCursorMode(4)
-											sampAddChatMessage(tag..'Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию', 0xfff000)
+											ezMessage('Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию')
 											while checkCursor do
 												local cX, cY = getCursorPos()
 												vsprint = true
@@ -1174,7 +1173,7 @@ local newFrame = imgui.OnFrame(
 													vsprint = false
 													obvodka[0] = false
 													checkCursor = false
-													if inicfg.save(mainIni, directIni) then sampAddChatMessage(tag..'Позиция сохранена!', 0xfff000) end
+													if inicfg.save(mainIni, directIni) then ezMessage('Позиция сохранена!') end
 												end
 												wait(0)
 											end
@@ -1196,7 +1195,7 @@ local newFrame = imgui.OnFrame(
 								vwater = true
 								obvodka[0] = true
 								sampSetCursorMode(4)
-								sampAddChatMessage(tag..'Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию', 0xfff000)
+								ezMessage('Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию')
 								while checkCursor do
 									local cX, cY = getCursorPos()
 									oxygenX, oxygenY = cX, cY
@@ -1209,7 +1208,7 @@ local newFrame = imgui.OnFrame(
 										mainIni.hudpos.oxygenX, mainIni.hudpos.oxygenY = oxygenX, oxygenY
 										vwater = false
 										checkCursor = false
-										if inicfg.save(mainIni, directIni) then sampAddChatMessage(tag..'Позиция сохранена!', 0xfff000) end
+										if inicfg.save(mainIni, directIni) then ezMessage('Позиция сохранена!') end
 									end
 									wait(0)
 								end
@@ -1519,7 +1518,7 @@ local newFrame = imgui.OnFrame(
 				if imgui.IsItemClicked() then
 					imgui.LogToClipboard()
 					imgui.LogText(primer_text[1]) -- копирование копитекста
-					sampAddChatMessage(tag.."Успешно скопировано!", 0xfff000)
+					ezMessage("Успешно скопировано!")
 					imgui.LogFinish()
 				end
 
@@ -1532,7 +1531,7 @@ local newFrame = imgui.OnFrame(
 				if imgui.IsItemClicked() then
 					imgui.LogToClipboard()
 					imgui.LogText(primer_text[2]) -- копирование копитекста
-					sampAddChatMessage(tag.."Успешно скопировано!", 0xfff000)
+					ezMessage("Успешно скопировано!")
 					imgui.LogFinish()
 				end
 
@@ -1545,7 +1544,7 @@ local newFrame = imgui.OnFrame(
 				if imgui.IsItemClicked() then
 					imgui.LogToClipboard()
 					imgui.LogText(primer_text[3]) 
-					sampAddChatMessage(tag.."Успешно скопировано!", 0xfff000)
+					ezMessage("Успешно скопировано!")
 					imgui.LogFinish()
 				end
 				imgui.PopFont()
@@ -1559,7 +1558,7 @@ local newFrame = imgui.OnFrame(
 				if imgui.IsItemClicked() then
 					imgui.LogToClipboard()
 					imgui.LogText(primer_text[4]) 
-					sampAddChatMessage(tag.."Успешно скопировано!", 0xfff000)
+					ezMessage("Успешно скопировано!")
 					imgui.LogFinish()
 				end
 				imgui.PopFont()
@@ -1663,7 +1662,8 @@ local newFrame = imgui.OnFrame(
 				u8"06.07.2022 - 1.3.0 - исправил баг худа с новыми анимациями на аризоне. Сделал анимацию popup'a\n"..
 				u8'07.07.2022 - 1.3.1 - исправил мелкие баги с темой имгуи\n'..
 				u8'07.07.2022 - 1.3.2 - исправил баги с косметикой скрипта\n'..
-				u8'07.07.2022 - 1.3.2 - версия скрипта в данный момент')
+				u8'10.07.2022 - 1.3.5 - Добавил автообновление скрипта. Исправил команду /findibiz? теперь её нужно вызывать через /fbz. Подправил код скрипта.\n'..
+				u8'10.07.2022 - 1.3.5 - версия скрипта в данный момент')
 				imgui.PopFont()
 				imgui.EndChild()
 				imgui.SetCursorPosX(300)
@@ -1705,7 +1705,7 @@ function sampev.onServerMessage(color, text)
 		end
 	end
 	if text:find('Изменить стиль езды можно только если у вас установлены технические модификации или на полицейских авто!') then
-		sampAddChatMessage(tag..'На это транспорте нет TwinTurbo.', 0xfff000)
+		ezMessage('На это транспорте нет TwinTurbo.')
 		return false
 	end
 	if text:find('%[Информация%] %{FFFFFF%}Используйте курсор чтобы выбрать тип топлива и его кол%-%во') then
@@ -1762,7 +1762,7 @@ function sampev.onDisplayGameText(style, time, text)
 	if carfuncs.autotwinturbo[0] then
 		if isCharInAnyCar(playerPed) then
 			if text:find('~n~~n~~n~~n~~n~~n~~n~~n~~w~Style: ~g~Comfort!') then
-				sampAddChatMessage(tag.."AutoTT: TwinTurbo включён.", 0xfff000)
+				ezMessage("AutoTT: TwinTurbo включён.")
 				sampSendChat('/style')
 			end
 		end
@@ -1890,9 +1890,9 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 		if countdialog == 2 then return false end
 		
     end
-	if text:find('.+') then
+	--[[if text:find('.+') then
 		print(id, style, title, text)
-	end
+	end]]
 end
 
 function ShowMessage(text, title, style)
@@ -1955,15 +1955,19 @@ end
 function files_add()
 	if not doesDirectoryExist("moonloader\\resource\\ezHelper") then createDirectory('moonloader\\resource\\ezHelper') end
 		if not doesFileExist('moonloader\\resource\\ezHelper\\02070.mp3') then
-		sampAddChatMessage(tag.."{FF0000}Ошибка!{FFFFFF} У вас отсутствуют нужные файлы для работы скрипта, начинаю скачивание.", 0xfff000)
+			ezMessage("{FF0000}Ошибка!{FFFFFF} У вас отсутствуют нужные файлы для работы скрипта, начинаю скачивание.")
 		downloadUrlToFile("https://drive.google.com/u/0/uc?id=1nBBQfy8LQlCDoRXgZZ_v3iZ10d3Cmo0_&export=download", getWorkingDirectory().."/resource/ezHelper/02070.mp3", function(id, status, p1, p2)
 			if status == 57 then
-				sampAddChatMessage(tag..'Начинаю загрузку звуков...', 0xfff000)
+				ezMessage('Начинаю загрузку звуков...')
 			elseif status == 58 then
-				sampAddChatMessage(tag..'Загрузка звуков {00FF00}успешно завершена.', 0xfff000)
+				ezMessage('Загрузка звуков {00FF00}успешно завершена.')
 			end
 		end)
 	end
+end
+
+function ezMessage(arg)
+	sampAddChatMessage("{fff000}[ezHelper]: {ffffff}"..arg, 0xfff000)
 end
 
 function apply_custom_style()
