@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.3.2")
+script_version("1.32")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -63,6 +63,36 @@ local encoding = require 'encoding'
 encoding.default = 'CP1251'         
 local u8 = encoding.UTF8            
 -------------------------------------ENCODING
+
+function update()
+    local raw = 'https://raw.githubusercontent.com/chapple01/ezHelper/main/version.json'
+    local dlstatus = require('moonloader').download_status
+    local requests = require('requests')
+    local f = {}
+    function f:getLastVersion()
+        local response = requests.get(raw)
+        if response.status_code == 200 then
+            return decodeJson(response.text)['last']
+        else
+            return 'UNKNOWN'
+        end
+    end
+    function f:download()
+        local response = requests.get(raw)
+        if response.status_code == 200 then
+            downloadUrlToFile(decodeJson(response.text)['url'], thisScript().path, function (id, status, p1, p2)
+                print('Скачиваю '..decodeJson(response.text)['url']..' в '..thisScript().path)
+                if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+                    sampAddChatMessage('Скрипт обновлен, перезагрузка...', -1)
+                    thisScript():reload()
+                end
+            end)
+        else
+            sampAddChatMessage('Ошибка, невозможно установить обновление, код: '..response.status_code, -1)
+        end
+    end
+    return f
+end
 
 --INI FILE
 local inicfg = require "inicfg"
@@ -456,7 +486,13 @@ function main()
 			memory.fill(0x5F80C0, 0x90, 10, true)
 			memory.fill(0x5FBA47, 0x90, 10, true)
 		end
-------------------------------------------------------		
+------------------------------------------------------
+
+	local lastver = update():getLastVersion()
+	if thisScript().version ~= lastver then
+		update():download()
+		sampAddChatMessage('Вышло обновление скрипта ('..thisScript().version..' -> '..lastver..'), введите /scriptupd для обновления!', -1)
+	end
 
     while true do
 		wait(0)
