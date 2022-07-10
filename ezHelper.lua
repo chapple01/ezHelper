@@ -1577,7 +1577,7 @@ local newFrame = imgui.OnFrame(
 					'{E6E6FA}	Например: {7FFFD4}найти дом, бизнес, посмотреть /members\n' ..
 					'{00BFFF}		Обычные:\n' ..
 					'{E6E6FA}			/fh {FFD700}[ID]{E6E6FA} - поиск дома\n' ..
-					'{E6E6FA}			/fb {FFD700}[ID]{E6E6FA} - поиск бизнеса\n' ..
+					'{E6E6FA}			/fbz {FFD700}[ID]{E6E6FA} - поиск бизнеса\n' ..
 					'{00BFFF}		Организационные:\n' ..
 					'{E6E6FA}			/jb - посмотреть свою успеваемость {808080}(/jobprogress)\n' ..
 					'{E6E6FA}			/cjb {FFD700}[ID]{E6E6FA} - проверка успеваемости сотрудника {808080}(/checkjobprogress) {FF0000}9+ rank{E6E6FA}\n' ..
