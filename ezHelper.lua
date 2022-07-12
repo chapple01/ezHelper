@@ -83,7 +83,7 @@ function update()
         local response = requests.get(raw)
         if response.status_code == 200 then
             downloadUrlToFile(decodeJson(response.text)['updateurl'], thisScript().path, function (id, status, p1, p2)
-				if status == 54 then
+				if status == 57 then
 					ezMessage('Начинаю загрузку скрипта...')
 				end
                 if status == dlstatus.STATUSEX_ENDDOWNLOAD then
