@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.3.9")
+script_version("1.3.8")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -880,7 +880,7 @@ local updateFrame = imgui.OnFrame(
 		imgui.Separator()
 		imgui.PopFont()
 		imgui.CenterTextColoredRGB('Вышло новое обновление для ezHelper.')
-		imgui.CenterTextColoredRGB('Хотите ли вы в данный момент обновить скрипт?')
+		imgui.CenterTextColoredRGB('Хотите ли вы обновить скрипт?')
 		imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.5, 0.5))
 		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6), 100))
 		imgui.PushFont(mainfont)
