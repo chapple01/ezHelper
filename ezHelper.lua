@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.3.8")
+script_version("1.3.9")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -177,7 +177,10 @@ local hcfg = {
 	openscript = {},
 	narko = {},
 	aidkit = {},
-	armor = {}
+	armor = {},
+	beer = {},
+	fillcar = {},
+	repcar = {}
 }
 
 filename = getGameDirectory()..'\\moonloader\\config\\ezHelper\\binds.cfg'
@@ -213,6 +216,15 @@ narko.v = hcfg.narko
 
 local armor = {}
 armor.v = hcfg.armor
+
+local beer = {}
+beer.v = hcfg.beer
+
+local fillcar = {}
+fillcar.v = hcfg.fillcar
+
+local repcar = {}
+repcar.v = hcfg.repcar
 
 ---------------------------
 ---------------------------
@@ -439,10 +451,7 @@ function main()
 	local lastver = update():getLastVersion()
     ezMessage('Скрипт загружен. Версия: '..lastver)
     if thisScript().version ~= lastver then
-        sampRegisterChatCommand('scriptupd', function()
-            update():download()
-        end)
-        sampAddChatMessage('Вышло обновление скрипта ('..thisScript().version..' -> '..lastver..'), введите /scriptupd для обновления!', -1)
+        sampAddChatMessage('Вышло обновление скрипта ('..thisScript().version..' -> '..lastver..')!', -1)
 		updatewindow[0] = true
     end
 	files_add()
@@ -621,13 +630,42 @@ function main()
 					sampSendChat('/armour')
 				end
 			end
+
+			if #beer.v < 2 then
+				if wasKeyPressed(beer.v[1]) then
+					sampSendChat('/beer')
+				end
+			else
+				if isKeyDown(beer.v[1]) and wasKeyPressed(beer.v[2]) then
+					sampSendChat('/beer')
+				end
+			end
+
+			if #fillcar.v < 2 then
+				if wasKeyPressed(fillcar.v[1]) then
+					sampSendChat('/fillcar')
+				end
+			else
+				if isKeyDown(fillcar.v[1]) and wasKeyPressed(fillcar.v[2]) then
+					sampSendChat('/fillcar')
+				end
+			end
+
+			if #repcar.v < 2 then
+				if wasKeyPressed(repcar.v[1]) then
+					sampSendChat('/repcar')
+				end
+			else
+				if isKeyDown(repcar.v[1]) and wasKeyPressed(repcar.v[2]) then
+					sampSendChat('/repcar')
+				end
+			end
 		end
 
 
 --CARTWEAKS------------------------------------------------------------------------------------------
 		if isKeyJustPressed(VK_L) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/lock")
-			print(unpack(hcfg.openscript))
 		end
         if isKeyJustPressed(VK_O) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/olock")	
@@ -1661,6 +1699,30 @@ local newFrame = imgui.OnFrame(
 					hcfg.armor = {unpack(armor.v)}
 					ecfg.save(hkname, hcfg)
 				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,125 + 3));
+				imgui.TextColoredRGB('Пиво')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 125))
+				if imgui.HotKey(u8'##beer', beer, 90) then
+					hcfg.beer = {unpack(beer.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,150 + 3));
+				imgui.TextColoredRGB('Заправить авто')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 150))
+				if imgui.HotKey(u8'##fillcar', fillcar, 90) then
+					hcfg.fillcar = {unpack(fillcar.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,175 + 3));
+				imgui.TextColoredRGB('Починить авто')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 175))
+				if imgui.HotKey(u8'##repcar', repcar, 90) then
+					hcfg.repcar = {unpack(repcar.v)}
+					ecfg.save(hkname, hcfg)
+				end
 				imgui.EndChild()
 			end
 
@@ -1850,7 +1912,8 @@ local newFrame = imgui.OnFrame(
 				u8'11.07.2022 - 1.3.6 - исправил баг без отклика в настройках времени и погоды\n'..
 				u8'11.07.2022 - 1.3.7 - Встречайте: Хоткеи!\n'..
 				u8'12.07.2022 - 1.3.8 - изменил автообновление в скрипте\n'..
-				u8'12.07.2022 - 1.3.8 - версия на данный момент')
+				u8'12.07.2022 - 1.3.9 - добавил новые ХотКеи\n'..
+				u8'12.07.2022 - 1.3.9 - версия на данный момент')
 				imgui.PopFont()
 				imgui.EndChild()
 				imgui.SetCursorPosX(300)
