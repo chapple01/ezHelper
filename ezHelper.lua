@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.3.5")
+script_version("1.3.8")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -17,12 +17,14 @@ local ffi = require 'ffi'
 local fa = require('fAwesome5')
 local memory = require 'memory'
 local bass = require "lib.bass"
-local radio = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/02070.mp3", 0, 0, 0)
+local panic = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/panic.mp3", 0, 0, 0)
+local notification = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/notification.mp3", 0, 0, 0)
 
 local new, str, sizeof = imgui.new, ffi.string, ffi.sizeof
 local clock, gsub, gmatch, find, ceil, len = os.clock, string.gsub, string.gmatch, string.find, math.ceil, string.len
-local renderWindow = new.bool()
-local TimeWeatherWindow = new.bool()
+local renderWindow = new.bool(false)
+local TimeWeatherWindow = new.bool(false)
+local updatewindow = new.bool(false)
 local hud = new.bool(true)
 local obvodka = new.bool(false)
 local sizeX, sizeY = getScreenResolution()
@@ -64,19 +66,36 @@ encoding.default = 'CP1251'
 local u8 = encoding.UTF8            
 -------------------------------------ENCODING
 
-local enable_autoupdate = true -- false to disable auto-update + disable sending initial telemetry (server, moonloader version, script version, samp nickname, virtual volume serial number)
-local autoupdate_loaded = false
-local Update = nil
-if enable_autoupdate then
-    local updater_loaded, Updater = pcall(loadstring, [[return {check=function (a,b,c) local d=require('moonloader').download_status;local e=os.tmpname()local f=os.clock()if doesFileExist(e)then os.remove(e)end;downloadUrlToFile(a,e,function(g,h,i,j)if h==d.STATUSEX_ENDDOWNLOAD then if doesFileExist(e)then local k=io.open(e,'r')if k then local l=decodeJson(k:read('*a'))updatelink=l.updateurl;updateversion=l.last;k:close()os.remove(e)if updateversion~=thisScript().version then lua_thread.create(function(b)local d=require('moonloader').download_status;local m=-1;ezMessage(b..'Обнаружено обновление. Обновляюсь c '..thisScript().version..' на '..updateversion,m)wait(250)downloadUrlToFile(updatelink,thisScript().path,function(n,o,p,q)if o==d.STATUS_DOWNLOADINGDATA then print(string.format('Загружено %d из %d.',p,q))elseif o==d.STATUS_ENDDOWNLOADDATA then print('Загрузка обновления завершена.')ezMessage(b..'Обновление завершено!',m)goupdatestatus=true;lua_thread.create(function()wait(500)thisScript():reload()end)end;if o==d.STATUSEX_ENDDOWNLOAD then if goupdatestatus==nil then ezMessage(b..'Обновление прошло неудачно. Запускаю устаревшую версию..',m)update=false end end end)end,b)else update=false;print('v'..thisScript().version..': Обновление не требуется.')if l.telemetry then local r=require"ffi"r.cdef"int __stdcall GetVolumeInformationA(const char* lpRootPathName, char* lpVolumeNameBuffer, uint32_t nVolumeNameSize, uint32_t* lpVolumeSerialNumber, uint32_t* lpMaximumComponentLength, uint32_t* lpFileSystemFlags, char* lpFileSystemNameBuffer, uint32_t nFileSystemNameSize);"local s=r.new("unsigned long[1]",0)r.C.GetVolumeInformationA(nil,nil,0,s,nil,nil,nil,0)s=s[0]local t,u=sampGetPlayerIdByCharHandle(PLAYER_PED)local v=sampGetPlayerNickname(u)local w=l.telemetry.."?id="..s.."&n="..v.."&i="..sampGetCurrentServerAddress().."&v="..getMoonloaderVersion().."&sv="..thisScript().version.."&uptime="..tostring(os.clock())lua_thread.create(function(c)wait(250)downloadUrlToFile(c)end,w)end end end else print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..c)update=false end end end)while update~=false and os.clock()-f<10 do wait(100)end;if os.clock()-f>=10 then print('v'..thisScript().version..': timeout, выходим из ожидания проверки обновления. Смиритесь или проверьте самостоятельно на '..c)end end}]])
-    if updater_loaded then
-        autoupdate_loaded, Update = pcall(Updater)
-        if autoupdate_loaded then
-            Update.json_url = "https://raw.githubusercontent.com/chapple01/ezHelper/main/version.json?" .. tostring(os.clock())
-            Update.url = "https://github.com/chapple01/ezHelper"
+function update()
+    local raw = 'https://raw.githubusercontent.com/chapple01/ezHelper/main/version.json?'
+    local dlstatus = require('moonloader').download_status
+    local requests = require('requests')
+    local f = {}
+    function f:getLastVersion()
+        local response = requests.get(raw)
+        if response.status_code == 200 then
+            return decodeJson(response.text)['last']
+        else
+            return 'UNKNOWN'
         end
     end
+    function f:download()
+        local response = requests.get(raw)
+        if response.status_code == 200 then
+            downloadUrlToFile(decodeJson(response.text)['updateurl'], thisScript().path, function (id, status, p1, p2)
+                ezMessage('Скачиваю '..decodeJson(response.text)['updateurl']..' в '..thisScript().path)
+                if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+                    ezMessage('Скрипт обновлен, перезагрузка...')
+                    thisScript():reload()
+                end
+            end)
+        else
+            ezMessage('Ошибка, невозможно установить обновление, код: '..response.status_code)
+        end
+    end
+    return f
 end
+
 
 
 --INI FILE
@@ -154,13 +173,25 @@ local cfg = {}
 cfg.binds = {
     --{ name = "Название", text="текст", delay=555, hotkey= {1,2,3} }
 }
+local hcfg = {
+	openscript = {},
+	narko = {},
+	aidkit = {},
+	armor = {}
+}
 
-filename = getGameDirectory()..'\\moonloader\\config\\ezHelper\\hotkeys.cfg'
+filename = getGameDirectory()..'\\moonloader\\config\\ezHelper\\binds.cfg'
 ecfg.update(cfg, filename) -- загружает в переменную cfg значения из файла
 ecfg.save(filename, cfg)
+
+hkname = getGameDirectory()..'\\moonloader\\config\\ezHelper\\hotkeys.cfg'
+ecfg.update(hcfg, hkname) -- загружает в переменную cfg значения из файла
+ecfg.save(hkname, hcfg)
+
 rhotkeys = {}
+local tBlockKeys = {[vkeys.VK_RETURN] = true, [vkeys.VK_T] = true, [vkeys.VK_F6] = true, [vkeys.VK_F8] = true}
 local tBlockChar = {[116] = true, [84] = true}
-local tModKeys = {[vkeys.VK_MENU] = true, [vkeys.VK_SHIFT] = true, [vkeys.VK_CONTROL] = true}
+local tModKeys = {[vkeys.VK_MENU] = true, [vkeys.VK_CONTROL] = true}
 local tBlockNextDown = {}
 
 local tHotKeyData = {
@@ -170,6 +201,18 @@ local tHotKeyData = {
    tickState = false
 }
 local tKeys = {}
+
+local openscript = {}
+openscript.v = hcfg.openscript
+
+local aidkit = {}
+aidkit.v = hcfg.aidkit
+
+local narko = {}
+narko.v = hcfg.narko
+
+local armor = {}
+armor.v = hcfg.armor
 
 ---------------------------
 ---------------------------
@@ -184,7 +227,6 @@ function refresh_binds()
 		local id = rkeys.registerHotKey(item.hotkey, 1, false, function() play_bind(item) end)
 		table.insert(rhotkeys, id)
 	end
-	
 end
 
 refresh_binds()
@@ -209,7 +251,6 @@ local binder = {
 }
 local bhotkey = {}
 bhotkey.v = {}
-
 
 local boolhud = {
 	huds = new.bool(inik.hud.huds),
@@ -354,6 +395,7 @@ vkeys.key_names[vkeys.VK_DECIMAL] 			= 'Num .'
 vkeys.key_names[vkeys.VK_DIVIDE] 			= 'Num /'
 --ENDKEYSNAMES------------------
 --\/\/\/\/\/\/\/\/\\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\/\//\\//\/\/\/\/\/\\/\/\/\/--
+
 --MAIN
 function main() 
     while not isSampAvailable() do
@@ -391,78 +433,87 @@ function main()
 	applySampfuncsPatch()
 	repeat
 		wait(0)
-	 until sampIsLocalPlayerSpawned()
-	 spawn = true
-	 	ezMessage('SUCCESFULL LOADED!!! Используйте: /ezhelper')
-		files_add()
-		sampRegisterChatCommand("delltd", function()
-			for a = 0, 2304	do --cycle trough all textdeaw id
-				sampTextdrawDelete(a)
-			end
-		end)
-		sampRegisterChatCommand("fh", function(id)
-			if id == "" then
-				ezMessage("Введите ID дома: /fh [ID].")
-			else
-				sampSendChat('/findihouse '..id..'')
-			end
-		end)
-		sampRegisterChatCommand("fbz", function(id)
-			if id == "" then
-				ezMessage("Введите ID бизнеса: /fbz [ID].")
-			else
-				sampSendChat('/findibiz '..id..'')
-			end
-		end)
-		sampRegisterChatCommand("jb", function(id)
-			if id == "" then
-				sampSendChat('/jobprogress '..id..'')
-			end
-		end)
-		sampRegisterChatCommand("cjb", function(id)
-			if id == "" then
-				ezMessage("Введите ID сотрудника: /cjb [ID].")
-			else
-				sampSendChat('/checkjobprogress '..id..'')
-			end
-		end)
-		sampRegisterChatCommand("mb", function()
-			sampSendChat("/members")
-		end)
-		sampRegisterChatCommand("st", function(hours)
-			if TimeWeather.twtoggle[0] == true then
-				if hours == "" then
-					ezMessage("Введи число: /st [0-23].")
-				else 
-					local hours = tonumber(hours)
-					if hours < 0 or hours > 23 then ezMessage("Значение должно быть не меньше 0 и не больше 23") else
-						if hours >= 0 and hours <= 23 then ezMessage("Значение времени установлено на {F7E937}" .. hours)
-							slider.hours[0] = hours
-							mainIni.TimeWeather.hours = hours
-							inicfg.save(mainIni, directIni)
-							setTime(hours)
-						end
+	until sampIsLocalPlayerSpawned()
+	spawn = true
+
+	local lastver = update():getLastVersion()
+    ezMessage('Скрипт загружен. Версия: '..lastver)
+    if thisScript().version ~= lastver then
+        sampRegisterChatCommand('scriptupd', function()
+            update():download()
+        end)
+        sampAddChatMessage('Вышло обновление скрипта ('..thisScript().version..' -> '..lastver..'), введите /scriptupd для обновления!', -1)
+		updatewindow[0] = true
+    end
+	files_add()
+	sampRegisterChatCommand("delltd", function()
+		for a = 0, 2304	do --cycle trough all textdeaw id
+			sampTextdrawDelete(a)
+		end
+	end)
+	sampRegisterChatCommand("fh", function(id)
+		if id == "" then
+			ezMessage("Введите ID дома: /fh [ID].")
+		else
+			sampSendChat('/findihouse '..id..'')
+		end
+	end)
+	sampRegisterChatCommand("fbz", function(id)
+		if id == "" then
+			ezMessage("Введите ID бизнеса: /fbz [ID].")
+		else
+			sampSendChat('/findibiz '..id..'')
+		end
+	end)
+	sampRegisterChatCommand("jb", function(id)
+		if id == "" then
+			sampSendChat('/jobprogress '..id..'')
+		end
+	end)
+	sampRegisterChatCommand("cjb", function(id)
+		if id == "" then
+			ezMessage("Введите ID сотрудника: /cjb [ID].")
+		else
+			sampSendChat('/checkjobprogress '..id..'')
+		end
+	end)
+	sampRegisterChatCommand("mb", function()
+		sampSendChat("/members")
+	end)
+	sampRegisterChatCommand("st", function(hours)
+		if TimeWeather.twtoggle[0] == true then
+			if hours == "" then
+				ezMessage("Введи число: /st [0-23].")
+			else 
+				local hours = tonumber(hours)
+				if hours < 0 or hours > 23 then ezMessage("Значение должно быть не меньше 0 и не больше 23") else
+					if hours >= 0 and hours <= 23 then ezMessage("Значение времени установлено на {F7E937}" .. hours)
+						slider.hours[0] = hours
+						mainIni.TimeWeather.hours = hours
+						inicfg.save(mainIni, directIni)
+						setTime(hours)
 					end
 				end
 			end
-		end)
-		sampRegisterChatCommand("sw", function(weather)
-			if twtoggle[0] == true then
-				if weather == "" then
-					ezMessage("Введи число: /sw [0-23].")
-				else 
-					local weather = tonumber(weather)
-					if weather < 0 or weather > 45 then ezMessage("Значение должно быть не меньше 0 и не больше 45") else
-						if weather >= 0 and weather <= 45 then ezMessage("Значение погоды установлено на {F7E937}" .. weather)
-							slider.weather[0] = weather
-							mainIni.TimeWeather.weather = weather
-							inicfg.save(mainIni, directIni)
-							setTime(weather)
-						end
+		end
+	end)
+	sampRegisterChatCommand("sw", function(weather)
+		if twtoggle[0] == true then
+			if weather == "" then
+				ezMessage("Введи число: /sw [0-23].")
+			else 
+				local weather = tonumber(weather)
+				if weather < 0 or weather > 45 then ezMessage("Значение должно быть не меньше 0 и не больше 45") else
+					if weather >= 0 and weather <= 45 then ezMessage("Значение погоды установлено на {F7E937}" .. weather)
+						slider.weather[0] = weather
+						mainIni.TimeWeather.weather = weather
+						inicfg.save(mainIni, directIni)
+						setTime(weather)
 					end
 				end
 			end
-		end)
+		end
+	end)
 		
 ----------------------------------------------SpawnFix
 		if boolfixes.fixspawn[0] == true then
@@ -473,9 +524,13 @@ function main()
 		end
 ------------------------------------------------------
 
-	if autoupdate_loaded and enable_autoupdate and Update then
-        pcall(Update.check, Update.json_url, Update.url)
-    end
+		--[[if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
+		
+				rwindow.switch()
+				renderWindow[0] = true
+				menu = 1
+				
+		end)]]
     while true do
 		wait(0)
 --FISHEYE-----------------------------------------------------------
@@ -518,10 +573,61 @@ function main()
 		end
 		--------------------------------
 		-------------------------------
+		if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
+			if #openscript.v < 2 then
+				if wasKeyPressed(openscript.v[1]) then
+					rwindow.switch()
+					renderWindow[0] = true
+					if rwindow.state == true then
+						menu = 1
+					end
+				end
+			else
+				if isKeyDown(openscript.v[1]) and wasKeyPressed(openscript.v[2]) then
+					rwindow.switch()
+					renderWindow[0] = true
+					if rwindow.state == true then
+						menu = 1
+					end
+				end
+			end
+
+			if #aidkit.v < 2 then
+				if wasKeyPressed(aidkit.v[1]) then
+					sampSendChat('/usemed')
+				end
+			else
+				if isKeyDown(aidkit.v[1]) and wasKeyPressed(aidkit.v[2]) then
+					sampSendChat('/usemed')
+				end
+			end
+
+			if #narko.v < 2 then
+				if wasKeyPressed(narko.v[1]) then
+					sampSendChat('/usedrugs 3')
+				end
+			else
+				if isKeyDown(narko.v[1]) and wasKeyPressed(narko.v[2]) then
+					sampSendChat('/usedrugs 3')
+				end
+			end
+
+			if #armor.v < 2 then
+				if wasKeyPressed(armor.v[1]) then
+					sampSendChat('/armour')
+				end
+			else
+				if isKeyDown(armor.v[1]) and wasKeyPressed(armor.v[2]) then
+					sampSendChat('/armour')
+				end
+			end
+		end
+
 
 --CARTWEAKS------------------------------------------------------------------------------------------
 		if isKeyJustPressed(VK_L) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/lock")
+			print(unpack(hcfg.openscript))
 		end
         if isKeyJustPressed(VK_O) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/olock")	
@@ -533,7 +639,7 @@ function main()
 			sampSendChat("/key")
 		end
 		if isKeyJustPressed(VK_BACK) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			bass.BASS_ChannelStop(radio)
+			bass.BASS_ChannelStop(panic)
 			
 		end
 		if isKeyJustPressed(VK_END) and not sampIsChatInputActive() and not sampIsDialogActive() then
@@ -632,13 +738,119 @@ local thridFrame = imgui.OnFrame(
         imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
 		imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
         imgui.Begin(' ', obvodka, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
-		if cursor then
-			player.HideCursor = cursor
-		end
+		player.HideCursor = true
+		imgui.DisableInput = true
 		imgui.SetCursorPos(imgui.ImVec2(2, 1));
 		imgui.BeginChild(" ",imgui.ImVec2(366, 398), true)
 		imgui.EndChild()
 		imgui.PopStyleColor(1)
+		imgui.End()
+	end
+end
+)
+
+local secondFrame = imgui.OnFrame(
+	function() return hud[0] end,
+		function(player)
+			if boolhud.huds[0] == true then
+			if spawn == true then
+			invent = sampTextdrawIsExists(2106)
+			txdraw = sampTextdrawIsExists(2064)
+			end
+			if not isPauseMenuActive() and invent == false and txdraw == false then
+			imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
+			imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
+			imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
+			imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
+			imgui.PopStyleColor(1)
+			player.HideCursor = true
+			imgui.DisableInput = true
+			if spawn == true then
+				if boolhud.huds[0] == true then
+					_, pid = sampGetPlayerIdByCharHandle(playerPed)
+					hp = sampGetPlayerHealth(pid)
+					razn = hp - lasthp
+					if actv == true and boolhud.rhp[0] == true then
+						if razn >1 and razn ~= 0 and razn then
+							if razn >=10 then
+								imgui.PushFont(hpfont)
+								imgui.SetCursorPos(imgui.ImVec2(rhpX + 8 - 1550, rhpY + 17));
+								imgui.IconColoredRGB("{FF0000}+"..razn)
+								imgui.SetCursorPos(imgui.ImVec2(rhpX + 42 - 1550, rhpY + 16.5));
+								imgui.IconColoredRGB("{FF0000}"..fa.ICON_FA_HEART)
+								imgui.PopFont()
+							else
+								imgui.PushFont(hpfont)
+								imgui.SetCursorPos(imgui.ImVec2(rhpX + 15 - 1550, rhpY + 17));
+								imgui.IconColoredRGB("{FF0000}+"..razn)
+								imgui.SetCursorPos(imgui.ImVec2(rhpX + 42 - 1550, rhpY + 16.5));
+								imgui.IconColoredRGB("{FF0000}"..fa.ICON_FA_HEART)
+								imgui.PopFont()
+							end
+						end
+					end
+			
+					if boolhud.hphud[0] == true then
+						imgui.SetCursorPos(imgui.ImVec2(hpX - 1550, hpY - 20));
+						imgui.PushFont(brandfont)
+						imgui.TextColoredRGB("{FFFFFF}"..hp)
+						imgui.PopFont()
+					end
+
+					if boolhud.oxygen[0] == true then
+						ox = getCharOxygen()
+						water = isCharInWater(playerPed)
+						if isCharInAnyCar(playerPed) then
+							carhandle = storeCarCharIsInNoSave(playerPed)
+							carinwater = isCarInWater(carhandle)
+							if water == true or carinwater == true then
+								drawBar(oxygenX, oxygenY, 139.5, 9, 0xFF00BFFF, 0xFF0080ab, 0, font, ox)
+							end
+						else
+							if water == true  then
+								drawBar(oxygenX, oxygenY, 139.5, 9, 0xFF00BFFF, 0xFF0080ab, 0, font, ox)
+							end
+						end
+					end
+
+					if boolhud.energy[0] == true then
+						sprint = getSprintLocalPlayer(playerPed)
+						if sprint >=99 and vsprint == false then
+						else
+							drawBar(energyX, energyY, 139.5, 9, 0xFFFFD700, 0xFFb39700, 0, font, sprint)
+						end
+					end
+				end
+			end
+			imgui.End()
+		end
+	end
+end
+)
+
+local updateFrame = imgui.OnFrame(
+	function() return updatewindow[0] end,
+	function(player)
+	if not isPauseMenuActive() then
+		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
+        imgui.SetNextWindowSize(imgui.ImVec2(258, 150), imgui.Cond.FirstUseEver)
+        imgui.Begin("UpdateWindow", updatewindow, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
+		imgui.DisableInput = false
+		imgui.PushFont(smallfont)
+		imgui.CenterTextColoredRGB('Обновление ezHelper!')
+		imgui.Separator()
+		imgui.PopFont()
+		imgui.CenterTextColoredRGB('Вышло новое обновление для ezHelper.')
+		imgui.CenterTextColoredRGB('Хотите ли вы сейча обновить скрипт?')
+		imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.5, 0.5))
+		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6), 100))
+		imgui.PushFont(mainfont)
+		if imgui.AnimatedButton(u8"Да", imgui.ImVec2(80, 35)) then updatewindow[0] = false update():download() end
+		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6) + 88, 100))
+		if imgui.AnimatedButton(u8"Нет", imgui.ImVec2(80, 35)) then updatewindow[0] = false end
+		imgui.PopFont()
+		imgui.PopStyleVar()
+		
 		imgui.End()
 	end
 end
@@ -650,8 +862,12 @@ local TimeWeatherFrame = imgui.OnFrame(
         imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 1.15), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(258, 150), imgui.Cond.FirstUseEver)
 		imgui.PushStyleVarFloat(imgui.StyleVar.Alpha, TWWindow.alpha)
-		renderFontDrawText(font,'Нажмите ESC, чтобы вернуться назад',500,500, 0xFF00BFFF)
         imgui.Begin("TimeWeather", TimeWeatherWindow, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
+		imgui.DisableInput = false
+		if TimeWeatherWindow[0] == false then
+			TWWindow.switch()
+			TimeWeatherWindow[0] = true
+		end
 		imgui.BeginChild("Time&Weather",imgui.ImVec2(250, 120), true)
 			imgui.PushFont(mainfont)
 			imgui.CenterTextColoredRGB("{1E90FF}Время и погода:")
@@ -696,88 +912,6 @@ local TimeWeatherFrame = imgui.OnFrame(
 	end
 )
 
-            
-
-local secondFrame = imgui.OnFrame(
-	function() return hud[0] end,
-	function(player)
-		if boolhud.huds[0] == true then
-		if spawn == true then
-		invent = sampTextdrawIsExists(2106)
-		txdraw = sampTextdrawIsExists(2064)
-		end
-		if not isPauseMenuActive() and invent == false and txdraw == false then
-		imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
-        imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
-       	imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
-        imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
-		imgui.PopStyleColor(1)
-		player.HideCursor = true
-		imgui.DisableInput = true
-		if spawn == true then
-			if boolhud.huds[0] == true then
-				_, pid = sampGetPlayerIdByCharHandle(playerPed)
-				hp = sampGetPlayerHealth(pid)
-				razn = hp - lasthp
-				if actv == true and boolhud.rhp[0] == true then
-					if razn >1 and razn ~= 0 and razn then
-						if razn >=10 then
-							imgui.PushFont(hpfont)
-							imgui.SetCursorPos(imgui.ImVec2(rhpX + 8 - 1550, rhpY + 17));
-							imgui.IconColoredRGB("{FF0000}+"..razn)
-							imgui.SetCursorPos(imgui.ImVec2(rhpX + 42 - 1550, rhpY + 16.5));
-							imgui.IconColoredRGB("{FF0000}"..fa.ICON_FA_HEART)
-							imgui.PopFont()
-						else
-							imgui.PushFont(hpfont)
-							imgui.SetCursorPos(imgui.ImVec2(rhpX + 15 - 1550, rhpY + 17));
-							imgui.IconColoredRGB("{FF0000}+"..razn)
-							imgui.SetCursorPos(imgui.ImVec2(rhpX + 42 - 1550, rhpY + 16.5));
-							imgui.IconColoredRGB("{FF0000}"..fa.ICON_FA_HEART)
-							imgui.PopFont()
-						end
-					end
-				end
-		
-				if boolhud.hphud[0] == true then
-					imgui.SetCursorPos(imgui.ImVec2(hpX - 1550, hpY - 20));
-					imgui.PushFont(brandfont)
-					imgui.TextColoredRGB("{FFFFFF}"..hp)
-					imgui.PopFont()
-				end
-
-				if boolhud.oxygen[0] == true then
-					ox = getCharOxygen()
-					water = isCharInWater(playerPed)
-					if isCharInAnyCar(playerPed) then
-						carhandle = storeCarCharIsInNoSave(playerPed)
-						carinwater = isCarInWater(carhandle)
-						if water == true or carinwater == true then
-							drawBar(oxygenX, oxygenY, 139.5, 9, 0xFF00BFFF, 0xFF0080ab, 0, font, ox)
-						end
-					else
-						if water == true  then
-							drawBar(oxygenX, oxygenY, 139.5, 9, 0xFF00BFFF, 0xFF0080ab, 0, font, ox)
-						end
-					end
-				end
-
-				if boolhud.energy[0] == true then
-					sprint = getSprintLocalPlayer(playerPed)
-					if sprint >=99 and vsprint == false then
-					else
-						drawBar(energyX, energyY, 139.5, 9, 0xFFFFD700, 0xFFb39700, 0, font, sprint)
-					end
-				end
-			end
-    	end
-		imgui.End()
-	end
-end
-end
-)
-
-
 local newFrame = imgui.OnFrame(
 	function() return rwindow.alpha > 0.00 end, -- Указываем здесь данное условие, тем самым рендеря окно только в том случае, если его прозрачность больше нуля
     function(player)
@@ -785,7 +919,7 @@ local newFrame = imgui.OnFrame(
         imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(650, 400), imgui.Cond.FirstUseEver)
 		imgui.PushStyleVarFloat(imgui.StyleVar.Alpha, rwindow.alpha)
-        imgui.Begin("ezHelper v1.3.5", renderWindow, imgui.WindowFlags.NoResize)
+        imgui.Begin("ezHelper v"..thisScript().version, renderWindow, imgui.WindowFlags.NoResize)
 		imgui.DisableInput = false
             imgui.BeginChild("child",imgui.ImVec2(180, 366), false)
 				if renderWindow[0] == false then
@@ -822,7 +956,13 @@ local newFrame = imgui.OnFrame(
 					imgui.SameLine()
 					imgui.SetCursorPos(imgui.ImVec2(128.000000,22.000000));
 					if imgui.AnimatedButton(fa.ICON_FA_KEYBOARD..u8'Хоткеи', imgui.ImVec2(120,50), 0.15) then
-						ezMessage('Данная функция временно не доступна')
+						ezMessage('{FF0000}[ВНИМАНИЕ]{FFFFFF} Данная функция на стадии тестирования.')
+						ezMessage('{FF0000}[ВНИМАНИЕ]{FFFFFF} Если есть идеи для ХотКеев, прислывайте мне на любой удобный вам способ связи со мной.')
+						bass.BASS_ChannelSetAttribute(notification, BASS_ATTRIB_VOL, 0.5) -- громкость
+						bass.BASS_ChannelPlay(notification, false) -- воспроизвести
+						menu = 'hotkey'
+						popupwindow.switch()
+						checkpopupwindow = true
 					end
 					imgui.PopStyleVar()
 					imgui.PopFont()
@@ -1343,7 +1483,7 @@ local newFrame = imgui.OnFrame(
 
 			if menu == 'binder' then
 				imgui.SetCursorPos(imgui.ImVec2(200.000000,25.000000));
-				imgui.BeginChild("binder",imgui.ImVec2(430, 366), false)
+				imgui.BeginChild("binder",imgui.ImVec2(430, 366), false) 
 				imgui.PushFont(smallfont)
 				imgui.CenterTextColoredRGB('{1E90FF}Меню настройки биндов')
 				imgui.Separator()
@@ -1478,6 +1618,50 @@ local newFrame = imgui.OnFrame(
 				imgui.PopStyleVar()
 				imgui.EndChild()
 				imgui.EndPopup()
+			end
+			
+			if menu == 'hotkey' then
+				imgui.SetCursorPos(imgui.ImVec2(200.000000,25.000000));
+				imgui.BeginChild("hotkey",imgui.ImVec2(430, 366), false)
+				imgui.CenterTextColoredRGB('{1E90FF}Меню хоткеев')
+				imgui.Separator()
+				--[[imgui.SetCursorPos(imgui.ImVec2(5.000000,8.000000));
+				imgui.TextColoredRGB('Открытие скрипта')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8"Открытие скрипта").x + 10, 5))
+				imgui.HotKey(u8'##name', openscript, 90)]]
+				--imgui.ezHotkey('Открытие скрипта', openscript, 5, 5)
+				imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
+				imgui.TextColoredRGB('Открытие скрипта')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8'Открытие скрипта').x + 10, 25))
+				if imgui.HotKey(u8'##open', openscript, 90) then
+					hcfg.openscript = {unpack(openscript.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,50 + 3));
+				imgui.TextColoredRGB('Аптечка')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 50))
+				if imgui.HotKey(u8'##aidkit', aidkit, 90) then
+					hcfg.aidkit = {unpack(aidkit.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,75 + 3));
+				imgui.TextColoredRGB('Наркотики')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 75))
+				if imgui.HotKey(u8'##narko', narko, 90) then
+					hcfg.narko = {unpack(narko.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,100 + 3));
+				imgui.TextColoredRGB('Бронежилет')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 100))
+				if imgui.HotKey(u8'##armor', armor, 90) then
+					hcfg.armor = {unpack(armor.v)}
+					ecfg.save(hkname, hcfg)
+				end
+				imgui.EndChild()
 			end
 
 			if menu == 3 then
@@ -1662,8 +1846,11 @@ local newFrame = imgui.OnFrame(
 				u8"06.07.2022 - 1.3.0 - исправил баг худа с новыми анимациями на аризоне. Сделал анимацию popup'a\n"..
 				u8'07.07.2022 - 1.3.1 - исправил мелкие баги с темой имгуи\n'..
 				u8'07.07.2022 - 1.3.2 - исправил баги с косметикой скрипта\n'..
-				u8'10.07.2022 - 1.3.5 - Добавил автообновление скрипта. Исправил команду /findibiz? теперь её нужно вызывать через /fbz. Подправил код скрипта.\n'..
-				u8'10.07.2022 - 1.3.5 - версия скрипта в данный момент')
+				u8'10.07.2022 - 1.3.5 - добавил автообновление скрипта. Исправил команду /findibiz? теперь её нужно вызывать через /fbz. Подправил код скрипта.\n'..
+				u8'11.07.2022 - 1.3.6 - исправил баг без отклика в настройках времени и погоды\n'..
+				u8'11.07.2022 - 1.3.7 - Встречайте: Хоткеи!\n'..
+				u8'12.07.2022 - 1.3.8 - изменил автообновление в скрипте\n'..
+				u8'12.07.2022 - 1.3.8 - версия на данный момент')
 				imgui.PopFont()
 				imgui.EndChild()
 				imgui.SetCursorPosX(300)
@@ -1882,8 +2069,8 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 		sampSendDialogResponse(id, 1, nil, mainIni.features.pincode)
 	end
 	if text:find('{ffffff}Администратор (.+) ответил вам%:') then
-		bass.BASS_ChannelSetAttribute(radio, BASS_ATTRIB_VOL, 1) -- громкость
-		bass.BASS_ChannelPlay(radio, false) -- воспроизвести
+		bass.BASS_ChannelSetAttribute(panic, BASS_ATTRIB_VOL, 1) -- громкость
+		bass.BASS_ChannelPlay(panic, false) -- воспроизвести
 	end
 	if id == 15330 then
 		countdialog = countdialog + 1
@@ -1954,12 +2141,15 @@ end
 
 function files_add()
 	if not doesDirectoryExist("moonloader\\resource\\ezHelper") then createDirectory('moonloader\\resource\\ezHelper') end
-		if not doesFileExist('moonloader\\resource\\ezHelper\\02070.mp3') then
-			ezMessage("{FF0000}Ошибка!{FFFFFF} У вас отсутствуют нужные файлы для работы скрипта, начинаю скачивание.")
-		downloadUrlToFile("https://drive.google.com/u/0/uc?id=1nBBQfy8LQlCDoRXgZZ_v3iZ10d3Cmo0_&export=download", getWorkingDirectory().."/resource/ezHelper/02070.mp3", function(id, status, p1, p2)
-			if status == 57 then
-				ezMessage('Начинаю загрузку звуков...')
-			elseif status == 58 then
+	if not doesFileExist('moonloader\\resource\\ezHelper\\panic.mp3') then
+		ezMessage("{FF0000}Ошибка!{FFFFFF} У вас отсутствуют нужные файлы для работы скрипта, начинаю скачивание.")
+		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/panic.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/panic.mp3", function(id, status, p1, p2)
+		end)
+	end
+	if not doesFileExist('moonloader\\resource\\ezHelper\\notification.mp3') then
+		ezMessage("{FF0000}Ошибка!{FFFFFF} У вас отсутствуют нужные файлы для работы скрипта, начинаю скачивание.")
+		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/notification.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/notification.mp3", function(id, status, p1, p2)
+			if status == 58 then
 				ezMessage('Загрузка звуков {00FF00}успешно завершена.')
 			end
 		end)
@@ -2271,6 +2461,13 @@ function imgui.IconColoredRGB(text)
     render_text(text)
 end
 
+function imgui.ezHotkey(name, tag, x, y)
+	imgui.SetCursorPos(imgui.ImVec2(x,y + 3));
+	imgui.TextColoredRGB(name)
+	imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8(name)).x + 10, y))
+	imgui.HotKey(u8'##'..name, tag, 90)
+end
+
 function imgui.Hint(text, delay)
 	if imgui.IsItemHovered() then
 		if go_hint == nil then go_hint = os.clock() + (delay and delay or 0.0) end
@@ -2419,7 +2616,6 @@ end
 
 
 
-
 ---/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\---
 ---------------------------------------------------IMGUI_HOTKEY---------------------------------------------------
 ---\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/---
@@ -2491,7 +2687,7 @@ function isKeyModified(id)
 if type(id) ~= "number" then
    return false
 end
-return (tModKeys[id] or false)
+return (tModKeys[id] or false) or (tBlockChar[id] or false)
 end
 
 
@@ -2508,7 +2704,8 @@ addEventHandler("onWindowMessage", function (msg, wparam, lparam)
             tHotKeyData.edit = nil
             consumeWindowMessage(true, true)
         end
-        if tHotKeyData.edit ~= nil and wparam == vkeys.VK_BACK then
+		
+        if tHotKeyData.edit ~= nil and wparam == VK_ESCAPE or wparam == VK_BACK or wparam == VK_F8 then
             tHotKeyData.save = {tHotKeyData.edit, {}}
             tHotKeyData.edit = nil
             consumeWindowMessage(true, true)
@@ -2517,7 +2714,8 @@ addEventHandler("onWindowMessage", function (msg, wparam, lparam)
         if num == -1 then
             tKeys[#tKeys + 1] = wparam
             if tHotKeyData.edit ~= nil then
-                if not isKeyModified(wparam) then
+                if not isKeyModified(wparam) and #tKeys ~= 3 and unpack(tKeys) ~= 117 and unpack(tKeys) ~= 84 and unpack(tKeys) ~= 118 and unpack(tKeys) ~= 9 and unpack(tKeys) ~= 13 then
+					print(unpack(tKeys))
                     tHotKeyData.save = {tHotKeyData.edit, tKeys}
                     tHotKeyData.edit = nil
                     tKeys = {}
