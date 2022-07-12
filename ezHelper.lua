@@ -91,7 +91,7 @@ function update()
                 end
             end)
         else
-            ezMessage('Ошибка, невозможно установить обновление, код: '..response.status_code)
+            ezMessage('Ошибка, невозможно установить обновление, код ошибки: '..response.status_code)
         end
     end
     return f
