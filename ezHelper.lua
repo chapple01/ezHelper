@@ -67,7 +67,7 @@ local u8 = encoding.UTF8
 -------------------------------------ENCODING
 
 function update()
-    local raw = 'https://raw.githubusercontent.com/chapple01/ezHelper/main/version.json?'
+    local raw = 'https://raw.githubusercontent.com/chapple01/ezHelper/main/version.json'
     local dlstatus = require('moonloader').download_status
     local requests = require('requests')
     local f = {}
