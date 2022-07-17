@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.3.9")
+script_version("1.4.0")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -16,6 +16,8 @@ local new = imgui.new
 local ffi = require 'ffi'
 local fa = require('fAwesome5')
 local memory = require 'memory'
+local samem = require 'SAMemory'
+samem.require 'CDamageManager'
 local bass = require "lib.bass"
 local panic = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/panic.mp3", 0, 0, 0)
 local notification = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/notification.mp3", 0, 0, 0)
@@ -141,6 +143,9 @@ local mainIni = inicfg.load({
 		carlight = false,
 		antifine = false,
 		trunk = false,
+		antibreaklight = false,
+		strobe = false,
+		strobespeed = 250
 	},
 	hud =
 	{
@@ -180,8 +185,9 @@ local hcfg = {
 	aidkit = {},
 	armor = {},
 	beer = {},
-	fillcar = {},
-	repcar = {}
+	fllcar = {},
+	repcar = {},
+	hkstrobe = {}
 }
 
 filename = getGameDirectory()..'\\moonloader\\config\\ezHelper\\binds.cfg'
@@ -221,11 +227,14 @@ armor.v = hcfg.armor
 local beer = {}
 beer.v = hcfg.beer
 
-local fillcar = {}
-fillcar.v = hcfg.fillcar
+local fllcar = {}
+fllcar.v = hcfg.fllcar
 
 local repcar = {}
 repcar.v = hcfg.repcar
+
+local hkstrobe = {}
+hkstrobe.v = hcfg.hkstrobe
 
 ---------------------------
 ---------------------------
@@ -294,7 +303,9 @@ local carfuncs = {
 	autofill = new.bool(inik.carfuncs.autofill),
 	carlight = new.bool(inik.carfuncs.carlight),
 	antifine = new.bool(inik.carfuncs.antifine),
-	trunk = new.bool(inik.carfuncs.trunk)
+	trunk = new.bool(inik.carfuncs.trunk),
+	antibreaklight = new.bool(inik.carfuncs.antibreaklight),
+	strobe = new.bool(inik.carfuncs.strobe)
 }
 
 local WeaponsList = {"M4A1", "Combat Shotgun", "AK-47", 'Shotgun'}
@@ -311,7 +322,8 @@ local TimeWeather = {
 local slider = {
     hours = imgui.new.int(inik.TimeWeather.hours),
     weather = imgui.new.int(inik.TimeWeather.weather),
-	fisheye = imgui.new.int(inik.features.fov)
+	fisheye = imgui.new.int(inik.features.fov),
+	strobespeed = imgui.new.int(inik.carfuncs.strobespeed)
 }
 
 local ui_meta = {
@@ -374,6 +386,7 @@ local afks = 0
 local countdialog = 0
 local inputblock = false
 local checkpopupwindow = false
+local stroboscope = false
 
 
 local fa_icon = {
@@ -452,7 +465,7 @@ function main()
 	local lastver = update():getLastVersion()
     ezMessage('Скрипт загружен. Версия: '..lastver)
     if thisScript().version ~= lastver then
-        sampAddChatMessage('Вышло обновление скрипта ('..thisScript().version..' -> '..lastver..')!', -1)
+        ezMessage('Вышло обновление скрипта ('..thisScript().version..' -> '..lastver..')!')
 		updatewindow[0] = true
     end
 	files_add()
@@ -534,24 +547,22 @@ function main()
 		end
 ------------------------------------------------------
 
-		--[[if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
-		
-				rwindow.switch()
-				renderWindow[0] = true
-				menu = 1
-				
-		end)]]
+		lua_thread.create(strobe)
+
+
+
     while true do
 		wait(0)
 --FISHEYE-----------------------------------------------------------
 		if features.fisheye[0] == true then
-			if isCurrentCharWeapon(PLAYER_PED, 34) and isKeyDown(2) then
-				if not locked then 
-					cameraSetLerpFov(70.0, 70.0, 1000, 1)
+			if isCurrentCharWeapon(PLAYER_PED, 34) and isKeyDown(VK_RBUTTON) or isCurrentCharWeapon(PLAYER_PED, 43) and isKeyDown(VK_RBUTTON) then
+				
+				if locked then 
+					cameraSetLerpFov(slider.fisheye[0], slider.fisheye[0], 10, 1)
 					locked = true
 				end
 			else
-				cameraSetLerpFov(slider.fisheye[0], slider.fisheye[0], 1000, 1)
+				cameraSetLerpFov(slider.fisheye[0], slider.fisheye[0], 10, 1)
 				locked = false
 			end
 		end
@@ -582,92 +593,14 @@ function main()
 			end)
 		end
 		--------------------------------
-		-------------------------------
-		if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
-			if #openscript.v < 2 then
-				if wasKeyPressed(openscript.v[1]) then
-					rwindow.switch()
-					renderWindow[0] = true
-					if rwindow.state == true then
-						menu = 1
-					end
-				end
-			else
-				if isKeyDown(openscript.v[1]) and wasKeyPressed(openscript.v[2]) then
-					rwindow.switch()
-					renderWindow[0] = true
-					if rwindow.state == true then
-						menu = 1
-					end
-				end
-			end
-
-			if #aidkit.v < 2 then
-				if wasKeyPressed(aidkit.v[1]) then
-					sampSendChat('/usemed')
-				end
-			else
-				if isKeyDown(aidkit.v[1]) and wasKeyPressed(aidkit.v[2]) then
-					sampSendChat('/usemed')
-				end
-			end
-
-			if #narko.v < 2 then
-				if wasKeyPressed(narko.v[1]) then
-					sampSendChat('/usedrugs 3')
-				end
-			else
-				if isKeyDown(narko.v[1]) and wasKeyPressed(narko.v[2]) then
-					sampSendChat('/usedrugs 3')
-				end
-			end
-
-			if #armor.v < 2 then
-				if wasKeyPressed(armor.v[1]) then
-					sampSendChat('/armour')
-				end
-			else
-				if isKeyDown(armor.v[1]) and wasKeyPressed(armor.v[2]) then
-					sampSendChat('/armour')
-				end
-			end
-
-			if #beer.v < 2 then
-				if wasKeyPressed(beer.v[1]) then
-					sampSendChat('/beer')
-				end
-			else
-				if isKeyDown(beer.v[1]) and wasKeyPressed(beer.v[2]) then
-					sampSendChat('/beer')
-				end
-			end
-
-			if #fillcar.v < 2 then
-				if wasKeyPressed(fillcar.v[1]) then
-					sampSendChat('/fillcar')
-				end
-			else
-				if isKeyDown(fillcar.v[1]) and wasKeyPressed(fillcar.v[2]) then
-					sampSendChat('/fillcar')
-				end
-			end
-
-			if #repcar.v < 2 then
-				if wasKeyPressed(repcar.v[1]) then
-					sampSendChat('/repcar')
-				end
-			else
-				if isKeyDown(repcar.v[1]) and wasKeyPressed(repcar.v[2]) then
-					sampSendChat('/repcar')
-				end
-			end
-		end
+		--------------------------------
+		hotkeylist()
 
 
 --CARTWEAKS------------------------------------------------------------------------------------------
 		if isKeyJustPressed(VK_L) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/lock")
-		end
+		end			
         if isKeyJustPressed(VK_O) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/olock")	
 		end
@@ -677,6 +610,7 @@ function main()
         if isKeyJustPressed(VK_K) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/key")
 		end
+
 		if isKeyJustPressed(VK_BACK) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			bass.BASS_ChannelStop(panic)
 			
@@ -769,15 +703,115 @@ function main()
     end
 end
 
+function hotkeylist()
+	if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
+		if #openscript.v < 2 then
+			if wasKeyPressed(openscript.v[1]) then
+				rwindow.switch()
+				renderWindow[0] = true
+				if rwindow.state == true then
+					menu = 1
+				end
+			end
+		else
+			if isKeyDown(openscript.v[1]) and wasKeyPressed(openscript.v[2]) then
+				rwindow.switch()
+				renderWindow[0] = true
+				if rwindow.state == true then
+					menu = 1
+				end
+			end
+		end
+
+		if #aidkit.v < 2 then
+			if wasKeyPressed(aidkit.v[1]) then
+				sampSendChat('/usemed')
+			end
+		else
+			if isKeyDown(aidkit.v[1]) and wasKeyPressed(aidkit.v[2]) then
+				sampSendChat('/usemed')
+			end
+		end
+
+		if #narko.v < 2 then
+			if wasKeyPressed(narko.v[1]) then
+				sampSendChat('/usedrugs 3')
+			end
+		else
+			if isKeyDown(narko.v[1]) and wasKeyPressed(narko.v[2]) then
+				sampSendChat('/usedrugs 3')
+			end
+		end
+
+		if #armor.v < 2 then
+			if wasKeyPressed(armor.v[1]) then
+				sampSendChat('/armour')
+			end
+		else
+			if isKeyDown(armor.v[1]) and wasKeyPressed(armor.v[2]) then
+				sampSendChat('/armour')
+			end
+		end
+
+		if #beer.v < 2 then
+			if wasKeyPressed(beer.v[1]) then
+				sampSendChat('/beer')
+			end
+		else
+			if isKeyDown(beer.v[1]) and wasKeyPressed(beer.v[2]) then
+				sampSendChat('/beer')
+			end
+		end
+
+		if #fllcar.v < 2 then
+			if wasKeyPressed(fllcar.v[1]) then
+				sampSendChat('/fillcar')
+			end
+		else
+			if isKeyDown(fllcar.v[1]) and wasKeyPressed(fllcar.v[2]) then
+				sampSendChat('/fillcar')
+			end
+		end
+
+		if #repcar.v < 2 then
+			if wasKeyPressed(repcar.v[1]) then
+				sampSendChat('/repcar')
+			end
+		else
+			if isKeyDown(repcar.v[1]) and wasKeyPressed(repcar.v[2]) then
+				sampSendChat('/repcar')
+			end
+		end
+
+		if isCharInAnyCar(PLAYER_PED) and not isCharInAnyBoat(PLAYER_PED) and not isCharInAnyHeli(PLAYER_PED) and not isCharInAnyPlane(PLAYER_PED) and not isCharOnAnyBike(PLAYER_PED) then
+			local car = storeCarCharIsInNoSave(PLAYER_PED)
+			local driverPed = getDriverOfCar(car)
+			if isCarLightsOn(car) then
+				if #hkstrobe.v < 2 then
+					if wasKeyPressed(hkstrobe.v[1]) and driverPed == PLAYER_PED then
+						stroboscope = not stroboscope
+					end
+				else
+					if isKeyDown(hkstrobe.v[1]) and wasKeyPressed(hkstrobe.v[2]) and driverPed == PLAYER_PED then
+						stroboscope = not stroboscope
+					end
+				end
+			else
+				stroboscope = false
+			end
+		end
+	end
+end
+
 local thridFrame = imgui.OnFrame(
 	function() return obvodka[0] end,
 	function(player)
+		player.HideCursor = true
 	if not isPauseMenuActive() then
 		imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
         imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
 		imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
         imgui.Begin(' ', obvodka, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
-		player.HideCursor = true
 		imgui.DisableInput = true
 		imgui.SetCursorPos(imgui.ImVec2(2, 1));
 		imgui.BeginChild(" ",imgui.ImVec2(366, 398), true)
@@ -791,6 +825,7 @@ end
 local secondFrame = imgui.OnFrame(
 	function() return hud[0] end,
 		function(player)
+			player.HideCursor = true
 			if boolhud.huds[0] == true then
 			if spawn == true then
 			invent = sampTextdrawIsExists(2106)
@@ -802,7 +837,6 @@ local secondFrame = imgui.OnFrame(
 			imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
 			imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
 			imgui.PopStyleColor(1)
-			player.HideCursor = true
 			imgui.DisableInput = true
 			if spawn == true then
 				if boolhud.huds[0] == true then
@@ -1419,7 +1453,7 @@ local newFrame = imgui.OnFrame(
 
 			imgui.PushStyleVarFloat(imgui.StyleVar.ChildRounding, 6.0)
 				imgui.SetCursorPos(imgui.ImVec2(9.000000,150.000000));
-				imgui.BeginChild("carfuncs",imgui.ImVec2(225, 110), true)
+				imgui.BeginChild("carfuncs",imgui.ImVec2(225, 140), true)
 
 				imgui.PushFont(mainfont)
 				imgui.CenterTextColoredRGB('{1E90FF}CarFuncs')
@@ -1438,7 +1472,8 @@ local newFrame = imgui.OnFrame(
 					mainIni.carfuncs.autofill = carfuncs.autofill[0]
 					inicfg.save(mainIni, directIni)
 				end
-				imgui.ezHint('{FFFFFF}Автоматически выбирает топливо и заправялет траспорт.\n{FF0000}[NEW]{FFFFFF} Так же автоматически заряжает электрокары.',
+				imgui.ezHint('{FFFFFF}Автоматически выбирает топливо и заправялет траспорт.\n{FF0000}[NEW]{FFFFFF} Так же автоматически заряжает электрокары.\n'..
+				'{808080}Иногда может не работать из-за того, что меняются текстдравы на сервере.\n{808080}Если AutoFill не работает на сервере больше дня, отпишите мне.',
 				hpfont, mainfont, 14.000000, 51.000000)
 
 				imgui.SetCursorPos(imgui.ImVec2(30.000000,73.000000));
@@ -1464,7 +1499,8 @@ local newFrame = imgui.OnFrame(
 					mainIni.carfuncs.trunk = carfuncs.trunk[0]
 					inicfg.save(mainIni, directIni)
 				end
-				imgui.ezHint('{FFFFFF}Возвращает старое взаимодействие с багажником через {FFD700}ALT.',
+				imgui.ezHint('{FFFFFF}Возвращает старое взаимодействие с багажником через {FFD700}ALT.\n'..
+				'{808080}Чтобы открыть багажник Barracks, нажмите {FFD700}ПКМ + ALT',
 				hpfont, mainfont, 126.000000, 49.000000)
 
 				imgui.SetCursorPos(imgui.ImVec2(140.000000,73.000000));
@@ -1476,7 +1512,43 @@ local newFrame = imgui.OnFrame(
 				'{808080}Штраф начислится, если вы выйдите из машины.',
 				hpfont, mainfont, 126.000000, 74.000000)
 
+				imgui.SetCursorPos(imgui.ImVec2(30.000000,98.000000));
+				if imgui.Checkbox(u8"Strobes", carfuncs.strobe) then
+					mainIni.carfuncs.strobe = carfuncs.strobe[0]
+					inicfg.save(mainIni, directIni)
+				end
+				imgui.ezHint('Позволяет включать стробоскопы на любом транспорте.\n'..
+				'{808080}Настроить кнопку на включение можно в ХотКеях.',
+				hpfont, mainfont, 14.000000, 99.000000)
 
+				if carfuncs.strobe[0] == true then
+					imgui.PushFont(smallfont)
+					imgui.SetCursorPos(imgui.ImVec2(105.00000,102.600000));
+					imgui.Text(fa.ICON_FA_COG)
+					imgui.PopFont()
+					if imgui.IsItemClicked() then
+						imgui.OpenPopup('##strobespeed')
+					end
+					if imgui.BeginPopup('##strobespeed', false, imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize) then
+						if imgui.SliderInt('##slider.speed', slider.strobespeed, 150, 400) then 
+							inicfg.load(mainIni, directIni)
+							mainIni.carfuncs.strobespeed = slider.strobespeed[0]
+							inicfg.save(mainIni, directIni)
+						end
+						imgui.EndPopup()
+					end
+				else
+					stroboscope = false
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(140.000000,98.000000));
+				if imgui.Checkbox(u8"ABL", carfuncs.antibreaklight) then
+					mainIni.carfuncs.antibreaklight = carfuncs.antibreaklight[0]
+					inicfg.save(mainIni, directIni)
+				end
+				imgui.ezHint('ABL - AntiBreakLight, делает фары автомобиля неломаемыми.\n'..
+				'Приятно ездить, когда у тебя целые фары.',
+				hpfont, mainfont, 126.000000, 99.000000)
 
 				imgui.EndChild()
 			imgui.PopStyleVar(1)
@@ -1712,8 +1784,8 @@ local newFrame = imgui.OnFrame(
 				imgui.SetCursorPos(imgui.ImVec2(5,150 + 3));
 				imgui.TextColoredRGB('Заправить авто')
 				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 150))
-				if imgui.HotKey(u8'##fillcar', fillcar, 90) then
-					hcfg.fillcar = {unpack(fillcar.v)}
+				if imgui.HotKey(u8'##fllcar', fllcar, 90) then
+					hcfg.fllcar = {unpack(fllcar.v)}
 					ecfg.save(hkname, hcfg)
 				end
 
@@ -1722,6 +1794,14 @@ local newFrame = imgui.OnFrame(
 				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 175))
 				if imgui.HotKey(u8'##repcar', repcar, 90) then
 					hcfg.repcar = {unpack(repcar.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,200 + 3));
+				imgui.TextColoredRGB('Стробоскопы')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 200))
+				if imgui.HotKey(u8'##hkstrobe', hkstrobe, 90) then
+					hcfg.hkstrobe = {unpack(hkstrobe.v)}
 					ecfg.save(hkname, hcfg)
 				end
 				imgui.EndChild()
@@ -1909,12 +1989,13 @@ local newFrame = imgui.OnFrame(
 				u8"06.07.2022 - 1.3.0 - исправил баг худа с новыми анимациями на аризоне. Сделал анимацию popup'a\n"..
 				u8'07.07.2022 - 1.3.1 - исправил мелкие баги с темой имгуи\n'..
 				u8'07.07.2022 - 1.3.2 - исправил баги с косметикой скрипта\n'..
-				u8'10.07.2022 - 1.3.5 - добавил автообновление скрипта. Исправил команду /findibiz? теперь её нужно вызывать через /fbz. Подправил код скрипта.\n'..
+				u8'10.07.2022 - 1.3.5 - добавил автообновление скрипта. Исправил команду /findibiz; теперь её нужно вызывать через /fbz. Подправил код скрипта.\n'..
 				u8'11.07.2022 - 1.3.6 - исправил баг без отклика в настройках времени и погоды\n'..
 				u8'11.07.2022 - 1.3.7 - Встречайте: Хоткеи!\n'..
 				u8'12.07.2022 - 1.3.8 - изменил автообновление в скрипте\n'..
 				u8'12.07.2022 - 1.3.9 - добавил новые ХотКеи\n'..
-				u8'12.07.2022 - 1.3.9 - версия на данный момент')
+				u8'18.07.2022 - 1.4.0 - исправил некоторые баги в скрипте, добавил функцию ABL. Изменил систему взаимодействия с багажником у Barracks. Исправил баг с худом при перезаходе. Добавил стробоскопы.\n'..
+				u8'')
 				imgui.PopFont()
 				imgui.EndChild()
 				imgui.SetCursorPosX(300)
@@ -2159,6 +2240,10 @@ function ShowMessage(text, title, style)
     ffi.C.MessageBoxA(hwnd, text,  title, style and (style + 0x50000) or 0x50000)
 end
 
+function isCarLightsOn(car)
+	return readMemory(getCarPointer(car) + 0x428, 1) > 62
+end
+
 function carfunc()
     while true do wait(0)
         if not isPauseMenuActive() then
@@ -2196,11 +2281,69 @@ function carfunc()
 				end
 				if target ~= nil and wasKeyPressed(0x12) and carfuncs.trunk[0] == true then
 					local result, id = sampGetVehicleIdByCarHandle(target)
-					if result and not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then sampSendChat("/trunk " .. id) end
+					if result and not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
+						local idcar = getCarModel(target)
+						if idcar == 433 then
+							if wasKeyPressed(VK_RBUTTON) then
+								sampSendChat("/trunk " .. id)
+							end
+						else
+						sampSendChat("/trunk " .. id)
+						end
+					end
 				end
             end
         end
     end
+end
+
+function strobe()
+	while true do wait(0)
+		if isCharInAnyCar(PLAYER_PED) and not isCharInAnyBoat(PLAYER_PED) and not isCharInAnyHeli(PLAYER_PED) and not isCharInAnyPlane(PLAYER_PED) and not isCharOnAnyBike(PLAYER_PED) then
+			local car = storeCarCharIsInNoSave(PLAYER_PED)
+			local ped = getDriverOfCar(car)
+			local res, driverid = sampGetPlayerIdByCharHandle(ped)
+			if isCharInAnyCar(PLAYER_PED) then
+				local ptr = getCarPointer(car) + 1440
+				if carfuncs.antibreaklight[0] == true then	
+					if carfuncs.strobe[0] == true then
+						if stroboscope == true then
+							wait(slider.strobespeed[0])
+							callMethod(7086336, ptr, 2, 0, 0, 0)
+							callMethod(7086336, ptr, 2, 0, 1, 1)
+							wait(slider.strobespeed[0])
+							callMethod(7086336, ptr, 2, 0, 0, 1)
+							callMethod(7086336, ptr, 2, 0, 1, 0)
+						end
+					end
+					if stroboscope == false and carfuncs.antibreaklight[0] == true then
+						callMethod(7086336, ptr, 2, 0, 1, 0)
+						callMethod(7086336, ptr, 2, 0, 0, 0)
+					end
+				else
+					if carfuncs.strobe[0] == true then
+						if stroboscope == true then
+							wait(slider.strobespeed[0])
+							callMethod(7086336, ptr, 2, 0, 0, 0)
+							callMethod(7086336, ptr, 2, 0, 1, 1)
+							wait(slider.strobespeed[0])
+							callMethod(7086336, ptr, 2, 0, 0, 1)
+							callMethod(7086336, ptr, 2, 0, 1, 0)
+							zaderjka = true
+						end
+						if stroboscope == false and carfuncs.antibreaklight[0] == false then
+							if zaderjka == true then
+								callMethod(7086336, ptr, 2, 0, 1, 0)
+								callMethod(7086336, ptr, 2, 0, 0, 0)
+								wait(500)
+								zaderjka = false
+							end
+						end
+					end
+				end
+			end
+		end
+	end
 end
 
 function files_add()
@@ -2525,13 +2668,6 @@ function imgui.IconColoredRGB(text)
     render_text(text)
 end
 
-function imgui.ezHotkey(name, tag, x, y)
-	imgui.SetCursorPos(imgui.ImVec2(x,y + 3));
-	imgui.TextColoredRGB(name)
-	imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8(name)).x + 10, y))
-	imgui.HotKey(u8'##'..name, tag, 90)
-end
-
 function imgui.Hint(text, delay)
 	if imgui.IsItemHovered() then
 		if go_hint == nil then go_hint = os.clock() + (delay and delay or 0.0) end
@@ -2618,7 +2754,7 @@ function imgui.AnimatedButton(label, size, speed, rounded)
         for i, circle in ipairs(button.circles) do
             local time = os.clock() - circle.time
             local t = ImSaturate(time / speed)
-            local color = imgui.GetStyle().Colors[imgui.Col.TitleBg]
+            local color = imgui.GetStyle().Colors[imgui.Col.ScrollbarGrabHovered]
             local color = imgui.GetColorU32Vec4(imgui.ImVec4(color.x, color.y, color.z, (circle.reverse and (255-255*t) or (255*t))/255))
             local radius = math.max(size.x, size.y) * (circle.reverse and 1.5 or t)
             imgui.PushClipRect(p, imgui.ImVec2(p.x+size.x, p.y+size.y), true)
