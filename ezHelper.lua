@@ -16,8 +16,6 @@ local new = imgui.new
 local ffi = require 'ffi'
 local fa = require('fAwesome5')
 local memory = require 'memory'
-local samem = require 'SAMemory'
-samem.require 'CDamageManager'
 local bass = require "lib.bass"
 local panic = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/panic.mp3", 0, 0, 0)
 local notification = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/notification.mp3", 0, 0, 0)
