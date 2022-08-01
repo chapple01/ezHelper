@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.4.0")
+script_version("1.4.1")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -804,12 +804,12 @@ end
 local thridFrame = imgui.OnFrame(
 	function() return obvodka[0] end,
 	function(player)
-		player.HideCursor = true
 	if not isPauseMenuActive() then
 		imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
         imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
 		imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
         imgui.Begin(' ', obvodka, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
+		player.HideCursor = true
 		imgui.DisableInput = true
 		imgui.SetCursorPos(imgui.ImVec2(2, 1));
 		imgui.BeginChild(" ",imgui.ImVec2(366, 398), true)
@@ -822,81 +822,83 @@ end
 
 local secondFrame = imgui.OnFrame(
 	function() return hud[0] end,
-		function(player)
-			player.HideCursor = true
-			if boolhud.huds[0] == true then
+	function(player)
+		if boolhud.huds[0] == true then
 			if spawn == true then
-			invent = sampTextdrawIsExists(2106)
-			txdraw = sampTextdrawIsExists(2064)
+				invent = sampTextdrawIsExists(2106)
+				txdraw = sampTextdrawIsExists(2064)
 			end
 			if not isPauseMenuActive() and invent == false and txdraw == false then
-			imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
-			imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
-			imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
-			imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
-			imgui.PopStyleColor(1)
-			imgui.DisableInput = true
-			if spawn == true then
-				if boolhud.huds[0] == true then
-					_, pid = sampGetPlayerIdByCharHandle(playerPed)
-					hp = sampGetPlayerHealth(pid)
-					razn = hp - lasthp
-					if actv == true and boolhud.rhp[0] == true then
-						if razn >1 and razn ~= 0 and razn then
-							if razn >=10 then
-								imgui.PushFont(hpfont)
-								imgui.SetCursorPos(imgui.ImVec2(rhpX + 8 - 1550, rhpY + 17));
-								imgui.IconColoredRGB("{FF0000}+"..razn)
-								imgui.SetCursorPos(imgui.ImVec2(rhpX + 42 - 1550, rhpY + 16.5));
-								imgui.IconColoredRGB("{FF0000}"..fa.ICON_FA_HEART)
+				imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
+				imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
+				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
+				imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
+				imgui.PopStyleColor(1)
+				player.HideCursor = true
+				imgui.DisableInput = true
+					if spawn == true then
+						if boolhud.huds[0] == true then
+							_, pid = sampGetPlayerIdByCharHandle(playerPed)
+							hp = sampGetPlayerHealth(pid)
+							razn = hp - lasthp
+							if actv == true and boolhud.rhp[0] == true then
+								if razn >1 and razn ~= 0 and razn then
+									if razn >=10 then
+										imgui.PushFont(hpfont)
+										imgui.SetCursorPos(imgui.ImVec2(rhpX + 8 - 1550, rhpY + 17));
+										imgui.IconColoredRGB("{FF0000}+"..razn)
+										imgui.SetCursorPos(imgui.ImVec2(rhpX + 42 - 1550, rhpY + 16.5));
+										imgui.IconColoredRGB("{FF0000}"..fa.ICON_FA_HEART)
+										imgui.PopFont()
+									else
+										imgui.PushFont(hpfont)
+										imgui.SetCursorPos(imgui.ImVec2(rhpX + 15 - 1550, rhpY + 17));
+										imgui.IconColoredRGB("{FF0000}+"..razn)
+										imgui.SetCursorPos(imgui.ImVec2(rhpX + 42 - 1550, rhpY + 16.5));
+										imgui.IconColoredRGB("{FF0000}"..fa.ICON_FA_HEART)
+										imgui.PopFont()
+									end
+								end
+							end
+					
+							if boolhud.hphud[0] == true then
+								imgui.SetCursorPos(imgui.ImVec2(hpX - 1550, hpY - 20));
+								imgui.PushFont(brandfont)
+								imgui.TextColoredRGB("{FFFFFF}"..hp)
 								imgui.PopFont()
-							else
-								imgui.PushFont(hpfont)
-								imgui.SetCursorPos(imgui.ImVec2(rhpX + 15 - 1550, rhpY + 17));
-								imgui.IconColoredRGB("{FF0000}+"..razn)
-								imgui.SetCursorPos(imgui.ImVec2(rhpX + 42 - 1550, rhpY + 16.5));
-								imgui.IconColoredRGB("{FF0000}"..fa.ICON_FA_HEART)
-								imgui.PopFont()
 							end
-						end
-					end
-			
-					if boolhud.hphud[0] == true then
-						imgui.SetCursorPos(imgui.ImVec2(hpX - 1550, hpY - 20));
-						imgui.PushFont(brandfont)
-						imgui.TextColoredRGB("{FFFFFF}"..hp)
-						imgui.PopFont()
-					end
 
-					if boolhud.oxygen[0] == true then
-						ox = getCharOxygen()
-						water = isCharInWater(playerPed)
-						if isCharInAnyCar(playerPed) then
-							carhandle = storeCarCharIsInNoSave(playerPed)
-							carinwater = isCarInWater(carhandle)
-							if water == true or carinwater == true then
-								drawBar(oxygenX, oxygenY, 139.5, 9, 0xFF00BFFF, 0xFF0080ab, 0, font, ox)
+							if boolhud.oxygen[0] == true then
+								ox = getCharOxygen()
+								water = isCharInWater(playerPed)
+								if isCharInAnyCar(playerPed) then
+									carhandle = storeCarCharIsInNoSave(playerPed)
+									carinwater = isCarInWater(carhandle)
+									if water == true or carinwater == true then
+										drawBar(oxygenX, oxygenY, 139.5, 9, 0xFF00BFFF, 0xFF0080ab, 0, font, ox)
+									end
+								else
+									if water == true  then
+										drawBar(oxygenX, oxygenY, 139.5, 9, 0xFF00BFFF, 0xFF0080ab, 0, font, ox)
+									end
+								end
 							end
-						else
-							if water == true  then
-								drawBar(oxygenX, oxygenY, 139.5, 9, 0xFF00BFFF, 0xFF0080ab, 0, font, ox)
-							end
-						end
-					end
 
-					if boolhud.energy[0] == true then
-						sprint = getSprintLocalPlayer(playerPed)
-						if sprint >=99 and vsprint == false then
-						else
-							drawBar(energyX, energyY, 139.5, 9, 0xFFFFD700, 0xFFb39700, 0, font, sprint)
+							if boolhud.energy[0] == true then
+								sprint = getSprintLocalPlayer(playerPed)
+								if sprint >=99 and vsprint == false then
+								else
+									drawBar(energyX, energyY, 139.5, 9, 0xFFFFD700, 0xFFb39700, 0, font, sprint)
+								end
+							end
 						end
 					end
-				end
+				imgui.End()
 			end
-			imgui.End()
+		else
+			player.HideCursor = true
 		end
 	end
-end
 )
 
 local updateFrame = imgui.OnFrame(
@@ -1993,6 +1995,7 @@ local newFrame = imgui.OnFrame(
 				u8'12.07.2022 - 1.3.8 - изменил автообновление в скрипте\n'..
 				u8'12.07.2022 - 1.3.9 - добавил новые ХотКеи\n'..
 				u8'18.07.2022 - 1.4.0 - исправил некоторые баги в скрипте, добавил функцию ABL. Изменил систему взаимодействия с багажником у Barracks. Исправил баг с худом при перезаходе. Добавил стробоскопы.\n'..
+				u8'01.08.2022 - 1.4.1 - незначительные багфиксы.\n'..
 				u8'')
 				imgui.PopFont()
 				imgui.EndChild()
@@ -2067,7 +2070,7 @@ function sampev.onShowTextDraw(id, data)
 		atfll = lua_thread.create_suspended(function()
 			sampSendClickTextdraw(2064)
 			wait(300)
-			sampSendClickTextdraw(238)
+			sampSendClickTextdraw(158)
 		end)
 		atfll:run()
 		electofill = false
@@ -2108,6 +2111,11 @@ function sampev.onDisplayGameText(style, time, text)
 	if text:find(".+ HP") then
 		return false
 	end
+
+	if text:find("~y~PAYDAY~n~Launcher.+") then
+		return false
+	end
+	
 end
 
 function sampev.onSetPlayerHealth(health)
@@ -2205,6 +2213,10 @@ function getSprintLocalPlayer() -- Original: https://blast.hk/threads/13380/post
 	else
 		return 0
 	end
+end
+
+function sampev.onSetPlayerDrunk(drunkLevel)
+    return {1}
 end
 
 function sampev.onShowDialog(id, style, title, button1, button2, text)
