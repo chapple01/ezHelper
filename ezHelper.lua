@@ -25,7 +25,7 @@ local clock, gsub, gmatch, find, ceil, len = os.clock, string.gsub, string.gmatc
 local renderWindow = new.bool(false)
 local TimeWeatherWindow = new.bool(false)
 local updatewindow = new.bool(false)
-local hud = new.bool(false)
+local hud = new.bool(true)
 local obvodka = new.bool(false)
 local sizeX, sizeY = getScreenResolution()
 local font = renderCreateFont('segmdl2', 10, 5) --(�����, ������ ������, ����� ������)
@@ -372,7 +372,7 @@ setmetatable(popupwindow, ui_meta)
 
 local namePur = 0
 local hidefam = new.bool(inik.fpsup.hidefam)
-local cursor = new.bool(false)
+local cursor = false
 local rhpX, rhpY = mainIni.hudpos.rhpX, mainIni.hudpos.rhpY
 local hpX, hpY = mainIni.hudpos.hpX, mainIni.hudpos.hpY
 local energyX, energyY = mainIni.hudpos.energyX, mainIni.hudpos.energyY
@@ -823,7 +823,7 @@ end
 local secondFrame = imgui.OnFrame(
 	function() return hud[0] end,
 	function(player)
-
+		player.HideCursor = false
 		if boolhud.huds[0] == true then
 			if spawn == true then
 				invent = sampTextdrawIsExists(2106)
@@ -836,7 +836,6 @@ local secondFrame = imgui.OnFrame(
 				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
 				imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
 				imgui.PopStyleColor(1)
-				player.HideCursor = true
 				imgui.DisableInput = true
 					if spawn == true then
 						if boolhud.huds[0] == true then
@@ -897,6 +896,8 @@ local secondFrame = imgui.OnFrame(
 					end
 				imgui.End()
 			end
+		else
+			hud[0] = false
 		end
 	end
 )
