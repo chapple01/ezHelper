@@ -25,7 +25,7 @@ local clock, gsub, gmatch, find, ceil, len = os.clock, string.gsub, string.gmatc
 local renderWindow = new.bool(false)
 local TimeWeatherWindow = new.bool(false)
 local updatewindow = new.bool(false)
-local hud = new.bool(true)
+local hud = new.bool(false)
 local obvodka = new.bool(false)
 local sizeX, sizeY = getScreenResolution()
 local font = renderCreateFont('segmdl2', 10, 5) --(О©╫О©╫О©╫О©╫О©╫, О©╫О©╫О©╫О©╫О©╫О©╫ О©╫О©╫О©╫О©╫О©╫О©╫, О©╫О©╫О©╫О©╫О©╫ О©╫О©╫О©╫О©╫О©╫О©╫)
@@ -823,11 +823,13 @@ end
 local secondFrame = imgui.OnFrame(
 	function() return hud[0] end,
 	function(player)
+
 		if boolhud.huds[0] == true then
 			if spawn == true then
 				invent = sampTextdrawIsExists(2106)
 				txdraw = sampTextdrawIsExists(2064)
 			end
+			
 			if not isPauseMenuActive() and invent == false and txdraw == false then
 				imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
 				imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
@@ -895,8 +897,6 @@ local secondFrame = imgui.OnFrame(
 					end
 				imgui.End()
 			end
-		else
-			player.HideCursor = true
 		end
 	end
 )
@@ -1290,6 +1290,7 @@ local newFrame = imgui.OnFrame(
 					inicfg.save(mainIni, directIni)
 				end
 				if boolhud.huds[0] == true then
+					hud[0] = true
 					imgui.PushFont(smallfont)
 					imgui.SetCursorPos(imgui.ImVec2(380.00000,74.600000));
 					imgui.Text(fa.ICON_FA_COG)
@@ -1433,6 +1434,8 @@ local newFrame = imgui.OnFrame(
 						imgui.EndChild()
 						imgui.EndPopup()
 					end
+				else
+					hud[0] = false
 				end
 
 				imgui.ezHint('{FF0000}онкегмн дкъ йнонб\n'..
@@ -2229,7 +2232,7 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 	end
 	if id == 15330 then
 		countdialog = countdialog + 1
-		if countdialog == 2 then return false end
+		if countdialog >= 2 then return false end
 		
     end
 	--[[if text:find('.+') then
