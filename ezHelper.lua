@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.4.1")
+script_version("1.4.2")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -17,8 +17,8 @@ local ffi = require 'ffi'
 local fa = require('fAwesome5')
 local memory = require 'memory'
 local bass = require "lib.bass"
-local panic = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/panic.mp3", 0, 0, 0)
-local notification = bass.BASS_StreamCreateFile(false, "moonloader/resource/ezHelper/notification.mp3", 0, 0, 0)
+local panic = getGameDirectory().."\\moonloader\\resource\\ezHelper\\panic.mp3"
+local notification = getGameDirectory().."\\moonloader\\resource\\ezHelper\\notification.mp3"
 
 local new, str, sizeof = imgui.new, ffi.string, ffi.sizeof
 local clock, gsub, gmatch, find, ceil, len = os.clock, string.gsub, string.gmatch, string.find, math.ceil, string.len
@@ -185,7 +185,8 @@ local hcfg = {
 	beer = {},
 	fllcar = {},
 	repcar = {},
-	hkstrobe = {}
+	hkstrobe = {},
+	rcveh = {}
 }
 
 filename = getGameDirectory()..'\\moonloader\\config\\ezHelper\\binds.cfg'
@@ -233,6 +234,11 @@ repcar.v = hcfg.repcar
 
 local hkstrobe = {}
 hkstrobe.v = hcfg.hkstrobe
+
+local rcveh = {}
+rcveh.v = hcfg.rcveh
+
+
 
 ---------------------------
 ---------------------------
@@ -372,7 +378,7 @@ setmetatable(popupwindow, ui_meta)
 
 local namePur = 0
 local hidefam = new.bool(inik.fpsup.hidefam)
-local cursor = false
+local cursor = true
 local rhpX, rhpY = mainIni.hudpos.rhpX, mainIni.hudpos.rhpY
 local hpX, hpY = mainIni.hudpos.hpX, mainIni.hudpos.hpY
 local energyX, energyY = mainIni.hudpos.energyX, mainIni.hudpos.energyY
@@ -610,8 +616,7 @@ function main()
 		end
 
 		if isKeyJustPressed(VK_BACK) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			bass.BASS_ChannelStop(panic)
-			
+			playVolume(panic, 0)
 		end
 		if isKeyJustPressed(VK_END) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			bindplay = false
@@ -702,7 +707,7 @@ function main()
 end
 
 function hotkeylist()
-	if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
+	if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() and not sampIsScoreboardOpen() then
 		if #openscript.v < 2 then
 			if wasKeyPressed(openscript.v[1]) then
 				rwindow.switch()
@@ -798,6 +803,17 @@ function hotkeylist()
 				stroboscope = false
 			end
 		end
+
+		if #rcveh.v < 2 then
+			if wasKeyPressed(rcveh.v[1]) then
+				sampSendChat('/rcveh')
+			end
+		else
+			if isKeyDown(rcveh.v[1]) and wasKeyPressed(rcveh.v[2]) then
+				sampSendChat('/rcveh')
+			end
+		end
+
 	end
 end
 
@@ -822,8 +838,11 @@ end
 
 local secondFrame = imgui.OnFrame(
 	function() return hud[0] end,
-	function(player)
-		player.HideCursor = false
+	function(huds)
+		if wasKeyPressed(VK_Q) and isKeyDown(VK_LMENU) then
+			cursor = not cursor
+		end
+		huds.HideCursor = cursor
 		if boolhud.huds[0] == true then
 			if spawn == true then
 				invent = sampTextdrawIsExists(2106)
@@ -834,8 +853,9 @@ local secondFrame = imgui.OnFrame(
 				imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
 				imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
 				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
-				imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
+				imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoMove)
 				imgui.PopStyleColor(1)
+				--huds.HideCursor = true
 				imgui.DisableInput = true
 					if spawn == true then
 						if boolhud.huds[0] == true then
@@ -1004,12 +1024,8 @@ local newFrame = imgui.OnFrame(
                 imgui.SetCursorPos(imgui.ImVec2(5.000000,5.000000));
 				imgui.PushFont(mainfont)
 				if imgui.AnimatedButton(fa.ICON_FA_HOME .. u8"Главная", imgui.ImVec2(170, 55)) then menu = 1 end
-				imgui.PopFont()
-				imgui.PushFont(mainfont)
 				imgui.SetCursorPos(imgui.ImVec2(5.000000,70.000000));
 				if imgui.AnimatedButton(fa.ICON_FA_COGS .. u8"Функции", imgui.ImVec2(170, 55)) then menu = 2 end
-				imgui.PopFont()
-				imgui.PushFont(mainfont)
 				imgui.SetCursorPos(imgui.ImVec2(5.000000,135.000000));
 				if imgui.AnimatedButton(fa.ICON_FA_EDIT .. u8"Бинды", imgui.ImVec2(170, 55)) then imgui.OpenPopup('BinderOrHotkey') popupwindow.switch() end
 				imgui.PopFont()
@@ -1032,8 +1048,7 @@ local newFrame = imgui.OnFrame(
 					if imgui.AnimatedButton(fa.ICON_FA_KEYBOARD..u8'Хоткеи', imgui.ImVec2(120,50), 0.15) then
 						ezMessage('{FF0000}[ВНИМАНИЕ]{FFFFFF} Данная функция на стадии тестирования.')
 						ezMessage('{FF0000}[ВНИМАНИЕ]{FFFFFF} Если есть идеи для ХотКеев, прислывайте мне на любой удобный вам способ связи со мной.')
-						bass.BASS_ChannelSetAttribute(notification, BASS_ATTRIB_VOL, 0.5) -- громкость
-						bass.BASS_ChannelPlay(notification, false) -- воспроизвести
+						playVolume(notification, 1)
 						menu = 'hotkey'
 						popupwindow.switch()
 						checkpopupwindow = true
@@ -1448,7 +1463,8 @@ local newFrame = imgui.OnFrame(
 				'{808080}Помогает, если вы забыли переключить оружие.',
 				hpfont, mainfont, 298.000000, 46.000000)
 						
-				imgui.ezHint('HUD+ это функция, которая улучшает худ Аризоны РП.',
+				imgui.ezHint('HUD+ это функция, которая улучшает худ Аризоны РП.\n'..
+				'{808080}Если мерцает курсор в других скриптах, нажмите {DCDCDC}ALT + Q',
 				hpfont, mainfont, 298.000000, 71.000000)
 
 				imgui.EndChild()
@@ -1808,6 +1824,14 @@ local newFrame = imgui.OnFrame(
 					hcfg.hkstrobe = {unpack(hkstrobe.v)}
 					ecfg.save(hkname, hcfg)
 				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,225 + 3));
+				imgui.TextColoredRGB('Активация ПУ')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 225))
+				if imgui.HotKey(u8'##rcveh', rcveh, 90) then
+					hcfg.rcveh = {unpack(rcveh.v)}
+					ecfg.save(hkname, hcfg)
+				end
 				imgui.EndChild()
 			end
 
@@ -2000,6 +2024,7 @@ local newFrame = imgui.OnFrame(
 				u8'12.07.2022 - 1.3.9 - добавил новые ХотКеи\n'..
 				u8'18.07.2022 - 1.4.0 - исправил некоторые баги в скрипте, добавил функцию ABL. Изменил систему взаимодействия с багажником у Barracks. Исправил баг с худом при перезаходе. Добавил стробоскопы.\n'..
 				u8'01.08.2022 - 1.4.1 - незначительные багфиксы.\n'..
+				u8'04.08.2022 - 1.4.2 - обновил HUD+, подправил код скрипта, добавил новый HotKey, незначительные багфиксы.\n'..
 				u8'')
 				imgui.PopFont()
 				imgui.EndChild()
@@ -2025,6 +2050,14 @@ function onScriptTerminate(script, quit)
 	gameClockk = 0
 	clock = 0
 	afk = 0
+end
+
+function playVolume(arg, state)
+	if doesFileExist(arg) then
+		local audio = loadAudioStream(arg)
+		setAudioStreamState(audio, state)
+		setAudioStreamVolume(audio, 0.5)
+	end
 end
 
 function sampev.onServerMessage(color, text)
@@ -2228,17 +2261,16 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 		sampSendDialogResponse(id, 1, nil, mainIni.features.pincode)
 	end
 	if text:find('{ffffff}Администратор (.+) ответил вам%:') then
-		bass.BASS_ChannelSetAttribute(panic, BASS_ATTRIB_VOL, 1) -- громкость
-		bass.BASS_ChannelPlay(panic, false) -- воспроизвести
+		playVolume(panic, 1)
 	end
 	if id == 15330 then
 		countdialog = countdialog + 1
 		if countdialog >= 2 then return false end
 		
     end
-	--[[if text:find('.+') then
+	if text:find('.+') then
 		print(id, style, title, text)
-	end]]
+	end
 end
 
 function ShowMessage(text, title, style)
@@ -2821,7 +2853,7 @@ function imgui.ezHint(text, iconfont, textfont, posX, posY)
 end
 
 function play_bind(item)
-	if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() and not inputblock then
+	if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() and not sampIsScoreboardOpen() and not inputblock then
 		BIND_ITEM = item
 		BIND_START = true
 	end
