@@ -641,9 +641,7 @@ function main()
 			elseif isKeyJustPressed(VK_ESCAPE) and not sampIsChatInputActive() and not sampIsDialogActive() then
 				ffixarzdialogs = false
 			elseif isKeyDown(VK_F5) then
-				ffixarzdialogs = true
-			else
-				ffixarzdialogs = false
+				printStringNow("Fix ARZ_Windows: ~b~~g~ACTIVATE", 10)
 			end
 			
 			if ffixarzdialogs == true then
@@ -842,11 +840,11 @@ function hotkeyactivate()
 
 		if #scate.v < 2 then
 			if wasKeyPressed(scate.v[1]) then
-				sampSendChat('/scate')
+				sampSendChat('/skate')
 			end
 		else
 			if isKeyDown(scate.v[1]) and wasKeyPressed(scate.v[2]) then
-				sampSendChat('/scate')
+				sampSendChat('/skate')
 			end
 		end
 	end
