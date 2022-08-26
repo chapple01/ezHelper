@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.4.2")
+script_version("1.4.4")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -112,6 +112,7 @@ local mainIni = inicfg.load({
 		fixgps = false,
 		fixspawn = false,
 		fixvint = false,
+		fixarzdialogs = false,
 	},
 	fpsup =
 	{
@@ -186,7 +187,9 @@ local hcfg = {
 	fllcar = {},
 	repcar = {},
 	hkstrobe = {},
-	rcveh = {}
+	rcveh = {},
+	surf = {},
+	scate = {}
 }
 
 filename = getGameDirectory()..'\\moonloader\\config\\ezHelper\\binds.cfg'
@@ -238,6 +241,12 @@ hkstrobe.v = hcfg.hkstrobe
 local rcveh = {}
 rcveh.v = hcfg.rcveh
 
+local surf = {}
+surf.v = hcfg.surf
+
+local scate = {}
+scate.v = hcfg.scate
+
 
 
 ---------------------------
@@ -268,6 +277,7 @@ local boolfixes = {
 	fixgps = new.bool(inik.fixes.fixgps),
 	fixspawn = new.bool(inik.fixes.fixspawn),
 	fixvint = new.bool(inik.fixes.fixvint),
+	fixarzdialogs = new.bool(inik.fixes.fixarzdialogs)
 }
 
 local binder = {
@@ -391,7 +401,7 @@ local countdialog = 0
 local inputblock = false
 local checkpopupwindow = false
 local stroboscope = false
-
+local ffixarzdialogs = false
 
 local fa_icon = {
 	['ICON_FA_VK'] = "\xef\x86\x89",
@@ -438,7 +448,6 @@ function main()
 				if TimeWeather.realtime[0] == true then
 					mainIni.TimeWeather.hours = h
 					slider.hours[0] = h
-					inicfg.save(mainIni, directIni)
 				end
 
 				setTime(slider.hours[0])
@@ -552,6 +561,7 @@ function main()
 ------------------------------------------------------
 
 		lua_thread.create(strobe)
+		lua_thread.create(famhide)
 
 
 
@@ -598,7 +608,7 @@ function main()
 		end
 		--------------------------------
 		--------------------------------
-		hotkeylist()
+		hotkeyactivate()
 
 
 --CARTWEAKS------------------------------------------------------------------------------------------
@@ -624,23 +634,29 @@ function main()
 		--[[sampev.onDisplayGameText = function(style, time, text)
 			sampAddChatMessage('Текст: '..text, -1)
 		end]]
-
-		--famhide
-		for i=0, 2048 do
-			if sampIs3dTextDefined(i) and hidefam[0] == true then
-				local text, color, posX, posY, posZ, distance, ignoreWalls, playerId, vehicleId = sampGet3dTextInfoById(i)
-				if text:find("Family") or text:find("Empire") or text:find("Squad") or text:find("Dynasty") or text:find("Corporation") or text:find("Crew") or text:find("Brotherhood") or text:find("Club") then
-				sampDestroy3dText(i)
-				end
+		
+		if boolfixes.fixarzdialogs[0] then
+			if isKeyJustPressed(VK_B) and not sampIsChatInputActive() and not sampIsDialogActive() then
+				ffixarzdialogs = true
+			elseif isKeyJustPressed(VK_ESCAPE) and not sampIsChatInputActive() and not sampIsDialogActive() then
+				ffixarzdialogs = false
+			elseif isKeyDown(VK_F5) then
+				ffixarzdialogs = true
+			else
+				ffixarzdialogs = false
+			end
+			
+			if ffixarzdialogs == true then
+				printStringNow("Fix ARZ_Windows: ~b~~g~ACTIVATE", 10)
 			end
 		end
+		--famhide
+		
 
 
 ------------------------------------------------------------------------------------------------------
 
 --FIXES-----------------------------------------------------------------------------------------------
-		
-
 
 		if boolfixes.fixdver[0] == true then
 			if isKeyJustPressed(VK_H) and not sampIsChatInputActive() and not sampIsDialogActive() then
@@ -706,7 +722,7 @@ function main()
     end
 end
 
-function hotkeylist()
+function hotkeyactivate()
 	if not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() and not sampIsScoreboardOpen() then
 		if #openscript.v < 2 then
 			if wasKeyPressed(openscript.v[1]) then
@@ -814,6 +830,25 @@ function hotkeylist()
 			end
 		end
 
+		if #surf.v < 2 then
+			if wasKeyPressed(surf.v[1]) then
+				sampSendChat('/surf')
+			end
+		else
+			if isKeyDown(surf.v[1]) and wasKeyPressed(surf.v[2]) then
+				sampSendChat('/surf')
+			end
+		end
+
+		if #scate.v < 2 then
+			if wasKeyPressed(scate.v[1]) then
+				sampSendChat('/scate')
+			end
+		else
+			if isKeyDown(scate.v[1]) and wasKeyPressed(scate.v[2]) then
+				sampSendChat('/scate')
+			end
+		end
 	end
 end
 
@@ -821,7 +856,7 @@ local thridFrame = imgui.OnFrame(
 	function() return obvodka[0] end,
 	function(player)
 	if not isPauseMenuActive() then
-		imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
+		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 1.24, 0), imgui.Cond.Always)
         imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
 		imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
         imgui.Begin(' ', obvodka, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar)
@@ -839,24 +874,27 @@ end
 local secondFrame = imgui.OnFrame(
 	function() return hud[0] end,
 	function(huds)
+		
+
 		if wasKeyPressed(VK_Q) and isKeyDown(VK_LMENU) then
 			cursor = not cursor
 		end
+
 		huds.HideCursor = cursor
 		if boolhud.huds[0] == true then
 			if spawn == true then
 				invent = sampTextdrawIsExists(2106)
 				txdraw = sampTextdrawIsExists(2064)
-			end
+			end		
 			
 			if not isPauseMenuActive() and invent == false and txdraw == false then
-				imgui.SetNextWindowPos(imgui.ImVec2(1550, 0), imgui.Cond.Always)
+
+				imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 1.24, 0), imgui.Cond.Always)
 				imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
 				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
 				imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoMove)
 				imgui.PopStyleColor(1)
-				--huds.HideCursor = true
-				imgui.DisableInput = true
+				imgui.DisableInput = false
 					if spawn == true then
 						if boolhud.huds[0] == true then
 							_, pid = sampGetPlayerIdByCharHandle(playerPed)
@@ -1046,9 +1084,6 @@ local newFrame = imgui.OnFrame(
 					imgui.SameLine()
 					imgui.SetCursorPos(imgui.ImVec2(128.000000,22.000000));
 					if imgui.AnimatedButton(fa.ICON_FA_KEYBOARD..u8'Хоткеи', imgui.ImVec2(120,50), 0.15) then
-						ezMessage('{FF0000}[ВНИМАНИЕ]{FFFFFF} Данная функция на стадии тестирования.')
-						ezMessage('{FF0000}[ВНИМАНИЕ]{FFFFFF} Если есть идеи для ХотКеев, прислывайте мне на любой удобный вам способ связи со мной.')
-						playVolume(notification, 1)
 						menu = 'hotkey'
 						popupwindow.switch()
 						checkpopupwindow = true
@@ -1575,7 +1610,7 @@ local newFrame = imgui.OnFrame(
 
 			imgui.PushStyleVarFloat(imgui.StyleVar.ChildRounding, 6.0)
 				imgui.SetCursorPos(imgui.ImVec2(249.000000,150.000000));
-				imgui.BeginChild("fixes",imgui.ImVec2(165, 110), true)
+				imgui.BeginChild("fixes",imgui.ImVec2(165, 130), true)
 				imgui.PushFont(mainfont)
 				imgui.CenterTextColoredRGB('{FF0000}Фиксы')
 				imgui.PopFont()
@@ -1594,6 +1629,11 @@ local newFrame = imgui.OnFrame(
 					mainIni.fixes.fixspawn = boolfixes.fixspawn[0]
 					inicfg.save(mainIni, directIni)
 				end
+				imgui.SetCursorPos(imgui.ImVec2(30.000000,95.000000));
+				if imgui.Checkbox(u8"Фикс WARZ", boolfixes.fixarzdialogs) then
+					mainIni.fixes.fixarzdialogs = boolfixes.fixarzdialogs[0]
+					inicfg.save(mainIni, directIni)
+				end
 
 				imgui.ezHint('Позволяет открывать двери моментально.\n'..
 				'{808080}Активация: {DCDCDC}H',
@@ -1606,6 +1646,10 @@ local newFrame = imgui.OnFrame(
 				imgui.ezHint('{FFFFFF}Вы больше не спавнитесь с {FF4040}бутылкой{FFFAFA} / {FF4040}cигаретой{FFFFFF} в руках\n'..
 				'{808080}Для применения, нужно перезайти.',
 				hpfont, mainfont, 14.000000, 71.000000)
+
+				imgui.ezHint('{FF0000}[NEW]{FFFFFF} Исправляет баг с новыми окнами от лаунчера Аризоны РП.\n'..
+				'{808080}Небо заменялось на окно баттлпаса/доната, F5.',
+				hpfont, mainfont, 14.000000, 96.000000)
 				
 				imgui.EndChild()
 			imgui.PopStyleVar(1)
@@ -1750,89 +1794,8 @@ local newFrame = imgui.OnFrame(
 				imgui.EndChild()
 				imgui.EndPopup()
 			end
-			
 			if menu == 'hotkey' then
-				imgui.SetCursorPos(imgui.ImVec2(200.000000,25.000000));
-				imgui.BeginChild("hotkey",imgui.ImVec2(430, 366), false)
-				imgui.CenterTextColoredRGB('{1E90FF}Меню хоткеев')
-				imgui.Separator()
-				--[[imgui.SetCursorPos(imgui.ImVec2(5.000000,8.000000));
-				imgui.TextColoredRGB('Открытие скрипта')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8"Открытие скрипта").x + 10, 5))
-				imgui.HotKey(u8'##name', openscript, 90)]]
-				--imgui.ezHotkey('Открытие скрипта', openscript, 5, 5)
-				imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
-				imgui.TextColoredRGB('Открытие скрипта')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8'Открытие скрипта').x + 10, 25))
-				if imgui.HotKey(u8'##open', openscript, 90) then
-					hcfg.openscript = {unpack(openscript.v)}
-					ecfg.save(hkname, hcfg)
-				end
-
-				imgui.SetCursorPos(imgui.ImVec2(5,50 + 3));
-				imgui.TextColoredRGB('Аптечка')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 50))
-				if imgui.HotKey(u8'##aidkit', aidkit, 90) then
-					hcfg.aidkit = {unpack(aidkit.v)}
-					ecfg.save(hkname, hcfg)
-				end
-
-				imgui.SetCursorPos(imgui.ImVec2(5,75 + 3));
-				imgui.TextColoredRGB('Наркотики')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 75))
-				if imgui.HotKey(u8'##narko', narko, 90) then
-					hcfg.narko = {unpack(narko.v)}
-					ecfg.save(hkname, hcfg)
-				end
-
-				imgui.SetCursorPos(imgui.ImVec2(5,100 + 3));
-				imgui.TextColoredRGB('Бронежилет')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 100))
-				if imgui.HotKey(u8'##armor', armor, 90) then
-					hcfg.armor = {unpack(armor.v)}
-					ecfg.save(hkname, hcfg)
-				end
-
-				imgui.SetCursorPos(imgui.ImVec2(5,125 + 3));
-				imgui.TextColoredRGB('Пиво')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 125))
-				if imgui.HotKey(u8'##beer', beer, 90) then
-					hcfg.beer = {unpack(beer.v)}
-					ecfg.save(hkname, hcfg)
-				end
-
-				imgui.SetCursorPos(imgui.ImVec2(5,150 + 3));
-				imgui.TextColoredRGB('Заправить авто')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 150))
-				if imgui.HotKey(u8'##fllcar', fllcar, 90) then
-					hcfg.fllcar = {unpack(fllcar.v)}
-					ecfg.save(hkname, hcfg)
-				end
-
-				imgui.SetCursorPos(imgui.ImVec2(5,175 + 3));
-				imgui.TextColoredRGB('Починить авто')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 175))
-				if imgui.HotKey(u8'##repcar', repcar, 90) then
-					hcfg.repcar = {unpack(repcar.v)}
-					ecfg.save(hkname, hcfg)
-				end
-
-				imgui.SetCursorPos(imgui.ImVec2(5,200 + 3));
-				imgui.TextColoredRGB('Стробоскопы')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 200))
-				if imgui.HotKey(u8'##hkstrobe', hkstrobe, 90) then
-					hcfg.hkstrobe = {unpack(hkstrobe.v)}
-					ecfg.save(hkname, hcfg)
-				end
-
-				imgui.SetCursorPos(imgui.ImVec2(5,225 + 3));
-				imgui.TextColoredRGB('Активация ПУ')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 225))
-				if imgui.HotKey(u8'##rcveh', rcveh, 90) then
-					hcfg.rcveh = {unpack(rcveh.v)}
-					ecfg.save(hkname, hcfg)
-				end
-				imgui.EndChild()
+				hotkeylist()
 			end
 
 			if menu == 3 then
@@ -2024,8 +1987,10 @@ local newFrame = imgui.OnFrame(
 				u8'12.07.2022 - 1.3.9 - добавил новые ХотКеи\n'..
 				u8'18.07.2022 - 1.4.0 - исправил некоторые баги в скрипте, добавил функцию ABL. Изменил систему взаимодействия с багажником у Barracks. Исправил баг с худом при перезаходе. Добавил стробоскопы.\n'..
 				u8'01.08.2022 - 1.4.1 - незначительные багфиксы.\n'..
-				u8'04.08.2022 - 1.4.2 - обновил HUD+, подправил код скрипта, добавил новый HotKey, незначительные багфиксы.\n'..
-				u8'')
+				u8'04.08.2022 - 1.4.2 - обновил HUD+, подправил код скрипта, добавил новый HotKey.\n'..
+				u8'04.08.2022 - 1.4.3 - оптимизировал скрипт, спасибо за помощь')
+				imgui.SameLine(); imgui.Link('https://t.me/DoubleTapInside','Double Tap Inside')
+				imgui.WrappedTextRGB(u8'26.08.2022 - 1.4.4 - фикс бага новых окон лаунчера от АРЗ, новые хоткеи\n')
 				imgui.PopFont()
 				imgui.EndChild()
 				imgui.SetCursorPosX(300)
@@ -2045,6 +2010,144 @@ local newFrame = imgui.OnFrame(
 		imgui.PopStyleVar()
     end
 )
+
+function hotkeylist()
+			imgui.SetCursorPos(imgui.ImVec2(200.000000,25.000000));
+				imgui.BeginChild("hotkey",imgui.ImVec2(430, 366), false)
+				imgui.CenterTextColoredRGB('{1E90FF}Меню хоткеев')
+				imgui.Separator()
+				imgui.BeginChild("other",imgui.ImVec2(215, 55), true)
+				imgui.CenterTextColoredRGB('{1E90FF}Основное')
+
+					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
+					imgui.TextColoredRGB('Открытие скрипта')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8'Открытие скрипта').x + 10, 25))
+					if imgui.HotKey(u8'##open', openscript, 90) then
+						hcfg.openscript = {unpack(openscript.v)}
+						ecfg.save(hkname, hcfg)
+					end
+		
+				imgui.EndChild()
+
+			imgui.SetCursorPos(imgui.ImVec2(225.000000,22.000000));
+				imgui.BeginChild("heal",imgui.ImVec2(180, 130), true)
+				imgui.CenterTextColoredRGB('{1E90FF}Предметы')
+
+					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
+					imgui.TextColoredRGB('Аптечка')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 10, 25))
+					if imgui.HotKey(u8'##aidkit', aidkit, 90) then
+						hcfg.aidkit = {unpack(aidkit.v)}
+						ecfg.save(hkname, hcfg)
+					end
+
+					imgui.SetCursorPos(imgui.ImVec2(5,50 + 3));
+					imgui.TextColoredRGB('Наркотики')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 10, 50))
+					if imgui.HotKey(u8'##narko', narko, 90) then
+						hcfg.narko = {unpack(narko.v)}
+						ecfg.save(hkname, hcfg)
+					end
+
+					imgui.SetCursorPos(imgui.ImVec2(5,75 + 3));
+					imgui.TextColoredRGB('Бронежилет')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 10, 75))
+					if imgui.HotKey(u8'##armor', armor, 90) then
+						hcfg.armor = {unpack(armor.v)}
+						ecfg.save(hkname, hcfg)
+					end
+
+					imgui.SetCursorPos(imgui.ImVec2(5,100 + 3));
+					imgui.TextColoredRGB('Пиво')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 10, 100))
+					if imgui.HotKey(u8'##beer', beer, 90) then
+						hcfg.beer = {unpack(beer.v)}
+						ecfg.save(hkname, hcfg)
+					end
+
+				imgui.EndChild()
+
+			imgui.SetCursorPos(imgui.ImVec2(0.000000,85.000000));	
+				imgui.BeginChild("acs",imgui.ImVec2(215, 105), true)
+				imgui.CenterTextColoredRGB('{1E90FF}Аксессуары')
+
+					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
+					imgui.TextColoredRGB('Активация ПУ')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 25))
+					if imgui.HotKey(u8'##rcveh', rcveh, 90) then
+						hcfg.rcveh = {unpack(rcveh.v)}
+						ecfg.save(hkname, hcfg)
+					end
+
+					imgui.SetCursorPos(imgui.ImVec2(5,50 + 3));
+					imgui.TextColoredRGB('Доска для сёрфа')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 50))
+					if imgui.HotKey(u8'##surf', surf, 90) then
+						hcfg.surf = {unpack(surf.v)}
+						ecfg.save(hkname, hcfg)
+					end
+
+					imgui.SetCursorPos(imgui.ImVec2(5,75 + 3));
+					imgui.TextColoredRGB('Скейт')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 75))
+					if imgui.HotKey(u8'##scate', scate, 90) then
+						hcfg.scate = {unpack(scate.v)}
+						ecfg.save(hkname, hcfg)
+					end
+				imgui.EndChild()
+
+			imgui.SetCursorPos(imgui.ImVec2(225.000000,160.000000));
+			imgui.BeginChild("car",imgui.ImVec2(180, 105), true)
+			imgui.CenterTextColoredRGB('{1E90FF}Автомобиль')
+
+				imgui.SetCursorPos(imgui.ImVec2(9,25 + 3));
+				imgui.TextColoredRGB('Заправить')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Заправить')).x + 15, 25))
+				if imgui.HotKey(u8'##fllcar', fllcar, 90) then
+					hcfg.fllcar = {unpack(fllcar.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(8,50 + 3));
+				imgui.TextColoredRGB('Починить')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Заправить')).x + 15, 50))
+				if imgui.HotKey(u8'##repcar', repcar, 90) then
+					hcfg.repcar = {unpack(repcar.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(8,75 + 3));
+				imgui.TextColoredRGB('Стробы')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Заправить')).x + 15, 75))
+				if imgui.HotKey(u8'##hkstrobe', hkstrobe, 90) then
+					hcfg.hkstrobe = {unpack(hkstrobe.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+			imgui.EndChild()
+end
+
+function imgui.Link(link,name,myfunc)
+    myfunc = type(name) == 'boolean' and name or myfunc or false
+    name = type(name) == 'string' and name or type(name) == 'boolean' and link or link
+    local size = imgui.CalcTextSize(name)
+    local p = imgui.GetCursorScreenPos()
+    local p2 = imgui.GetCursorPos()
+    local resultBtn = imgui.InvisibleButton('##'..link..name, size)
+    if resultBtn then
+        if not myfunc then
+            os.execute('explorer '..link)
+        end
+    end
+    imgui.SetCursorPos(p2)
+    if imgui.IsItemHovered() then
+        imgui.TextColored(imgui.ImVec4(0, 0.5, 1, 1), name)
+        imgui.GetWindowDrawList():AddLine(imgui.ImVec2(p.x, p.y + size.y), imgui.ImVec2(p.x + size.x, p.y + size.y), imgui.GetColorU32Vec4(imgui.ImVec4(0, 0.5, 1, 1)))
+    else
+        imgui.TextColored(imgui.ImVec4(0, 0.4, 1, 1), name)
+    end
+    return resultBtn
+end
 
 function onScriptTerminate(script, quit)
 	gameClockk = 0
@@ -2088,6 +2191,12 @@ function sampev.onServerMessage(color, text)
 			electofill = false
 		end
 	end
+end
+
+function sampev.onSendCommand(cmd)
+    if cmd == "/donate" and boolfixes.fixarzdialogs[0] then 
+    	ffixarzdialogs = true
+    end
 end
 
 function setTime(hours)
@@ -2268,9 +2377,7 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 		if countdialog >= 2 then return false end
 		
     end
-	if text:find('.+') then
-		print(id, style, title, text)
-	end
+	--if text:find('.+') then	print(id, style, title, text) end
 end
 
 function ShowMessage(text, title, style)
@@ -2341,6 +2448,22 @@ function carfunc()
             end
         end
     end
+end
+
+function famhide()
+	while true do 
+		wait(20)
+		if hidefam[0] == true then
+			for i=0, 2048 do
+				if sampIs3dTextDefined(i) then
+					local text, color, posX, posY, posZ, distance, ignoreWalls, playerId, vehicleId = sampGet3dTextInfoById(i)
+					if text:find("Family") or text:find("Empire") or text:find("Squad") or text:find("Dynasty") or text:find("Corporation") or text:find("Crew") or text:find("Brotherhood") or text:find("Club") then
+					sampDestroy3dText(i)
+					end
+				end
+			end
+		end
+	end
 end
 
 function strobe()
