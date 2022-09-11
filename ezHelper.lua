@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.4.4")
+script_version("1.4.5")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -149,7 +149,7 @@ local mainIni = inicfg.load({
 	hud =
 	{
 		huds = true,
-		hphud = true,
+		adrunk = true,
 		rhp = true,
 		energy = true,
 		oxygen = true,
@@ -290,7 +290,7 @@ bhotkey.v = {}
 
 local boolhud = {
 	huds = new.bool(inik.hud.huds),
-	hphud = new.bool(inik.hud.hphud),
+	adrunk = new.bool(inik.hud.adrunk),
 	rhp = new.bool(inik.hud.rhp),
 	energy = new.bool(inik.hud.energy),
 	oxygen = new.bool(inik.hud.oxygen)
@@ -892,7 +892,7 @@ local secondFrame = imgui.OnFrame(
 				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
 				imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoMove)
 				imgui.PopStyleColor(1)
-				imgui.DisableInput = false
+				imgui.DisableInput = true
 					if spawn == true then
 						if boolhud.huds[0] == true then
 							_, pid = sampGetPlayerIdByCharHandle(playerPed)
@@ -916,13 +916,6 @@ local secondFrame = imgui.OnFrame(
 										imgui.PopFont()
 									end
 								end
-							end
-					
-							if boolhud.hphud[0] == true then
-								imgui.SetCursorPos(imgui.ImVec2(hpX - 1550, hpY - 20));
-								imgui.PushFont(brandfont)
-								imgui.TextColoredRGB("{FFFFFF}"..hp)
-								imgui.PopFont()
 							end
 
 							if boolhud.oxygen[0] == true then
@@ -1348,7 +1341,7 @@ local newFrame = imgui.OnFrame(
 						imgui.OpenPopup('##hud')
 					end
 					if imgui.BeginPopup('##hud', false, imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize) then
-						imgui.BeginChild("hud+",imgui.ImVec2(165, 80), false)
+						imgui.BeginChild("hud+",imgui.ImVec2(200, 80), false)
 					--HP+-----------------------------------------------------------------------------------------------------------------------
 									imgui.SetCursorPos(imgui.ImVec2(5.000000,17.000000));
 									if imgui.Checkbox(u8' ', boolhud.rhp) then
@@ -1381,44 +1374,28 @@ local newFrame = imgui.OnFrame(
 									end
 									imgui.SetCursorPos(imgui.ImVec2(30.000000,20.000000));
 									imgui.TextQuestion("	  ", u8'Убирает текст "+N.N HP". Выводит в место него сердечко с надписью возле худа.\nНажмите, чтобы изменить положение.')
-					--HPHUD---------------------------------------------------------------------------------------------------------------------
+					
+
+					--АнтиТряска---------------------------------------------------------------------------------------------------------------------
 									imgui.SetCursorPos(imgui.ImVec2(5.000000,47.000000));
-									if imgui.Checkbox(u8'', boolhud.hphud) then
-										mainIni.hud.hphud = boolhud.hphud[0]
+									if imgui.Checkbox(u8'   ', boolhud.adrunk) then
+										mainIni.hud.adrunk = boolhud.adrunk[0]
 										inicfg.save(mainIni, directIni)
 									end
-									imgui.SetCursorPos(imgui.ImVec2(32.000000,50.000000));
-									imgui.Text(u8"HPHUD")
-									if imgui.IsItemClicked() then
-										lua_thread.create(function ()
-											checkCursor = true
-											sampSetCursorMode(4)
-											ezMessage('Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию')
-											while checkCursor do
-												local cX, cY = getCursorPos()
-												obvodka[0] = true
-												hpX, hpY = cX, cY
-												if isKeyDown(32) then
-													sampSetCursorMode(0)
-													obvodka[0] = false
-													mainIni.hudpos.hpX, mainIni.hudpos.hpY = hpX, hpY
-													checkCursor = false
-													if inicfg.save(mainIni, directIni) then ezMessage('Позиция сохранена!') end
-												end
-												wait(0)
-											end
-										end)
-									end
-									imgui.SetCursorPos(imgui.ImVec2(32.000000,50.000000));
-									imgui.TextQuestion("		   ", u8"Самый обычный HPHUD. Показывает кол-во ХП.\nНажмите, чтобы изменить положение.")
 
-									imgui.SetCursorPos(imgui.ImVec2(80.000000,17.000000));
+									imgui.SetCursorPos(imgui.ImVec2(30.000000,50.000000));
+									imgui.Text(u8"АнтиТряска")
+									imgui.SetCursorPos(imgui.ImVec2(30.000000,50.000000));
+									imgui.TextQuestion("		  	", u8"Убирает тряску на экране.\nПомогает при ДТП и ломке.")
+
+					--Энергия---------------------------------------------------------------------------------------------------------------------
+									imgui.SetCursorPos(imgui.ImVec2(110.000000,17.000000));
 									if imgui.Checkbox(u8'   ', boolhud.energy) then
 										mainIni.hud.energy = boolhud.energy[0]
 										inicfg.save(mainIni, directIni)
 									end
-					--Энергия---------------------------------------------------------------------------------------------------------------------
-									imgui.SetCursorPos(imgui.ImVec2(106.000000,20.000000));
+
+									imgui.SetCursorPos(imgui.ImVec2(136.000000,20.000000));
 									imgui.Text(u8"Энергия")
 									if imgui.IsItemClicked() then
 										lua_thread.create(function ()
@@ -1445,12 +1422,12 @@ local newFrame = imgui.OnFrame(
 									imgui.SetCursorPos(imgui.ImVec2(106.000000,20.000000));
 									imgui.TextQuestion("		  	", u8"Показывает полоску энергии.\nНажмите, чтобы изменить положение.")
 					--Кислород---------------------------------------------------------------------------------------------------------------------
-						imgui.SetCursorPos(imgui.ImVec2(80.000000,47.000000));
+						imgui.SetCursorPos(imgui.ImVec2(110.000000,47.000000));
 						if imgui.Checkbox(u8'     ', boolhud.oxygen) then
 							mainIni.hud.oxygen = boolhud.oxygen[0]
 							inicfg.save(mainIni, directIni)
 						end
-						imgui.SetCursorPos(imgui.ImVec2(106.000000,50.000000));
+						imgui.SetCursorPos(imgui.ImVec2(136.000000,50.000000));
 						imgui.Text(u8"Кислород")
 						if imgui.IsItemClicked() then
 							lua_thread.create(function ()
@@ -1608,7 +1585,7 @@ local newFrame = imgui.OnFrame(
 
 			imgui.PushStyleVarFloat(imgui.StyleVar.ChildRounding, 6.0)
 				imgui.SetCursorPos(imgui.ImVec2(249.000000,150.000000));
-				imgui.BeginChild("fixes",imgui.ImVec2(165, 130), true)
+				imgui.BeginChild("fixes",imgui.ImVec2(165, 140), true)
 				imgui.PushFont(mainfont)
 				imgui.CenterTextColoredRGB('{FF0000}Фиксы')
 				imgui.PopFont()
@@ -1988,7 +1965,8 @@ local newFrame = imgui.OnFrame(
 				u8'04.08.2022 - 1.4.2 - обновил HUD+, подправил код скрипта, добавил новый HotKey.\n'..
 				u8'04.08.2022 - 1.4.3 - оптимизировал скрипт, спасибо за помощь')
 				imgui.SameLine(); imgui.Link('https://t.me/DoubleTapInside','Double Tap Inside')
-				imgui.WrappedTextRGB(u8'26.08.2022 - 1.4.4 - фикс бага новых окон лаунчера от АРЗ, новые хоткеи\n')
+				imgui.WrappedTextRGB(u8'26.08.2022 - 1.4.4 - фикс бага новых окон лаунчера от АРЗ, новые хоткеи\n'..
+				u8'08.09.2022 - 1.4.5 - фикс бага автозаравки, новая функция "АнтиТряска", убрал hphud, так как в нём нет необходимости.')
 				imgui.PopFont()
 				imgui.EndChild()
 				imgui.SetCursorPosX(300)
@@ -2205,37 +2183,74 @@ function setWeather(weather)
 	forceWeatherNow(weather)
 end
 
+local fill_id
+local cost_id
+local arrow_id
+local prodaoilfill = false
 function sampev.onShowTextDraw(id, data)
-	electro = sampTextdrawGetString(2063)
-	if electro == "ELECTRIC" then
-		electofill = true
-	end
-	if electofill == true then
-		atfll = lua_thread.create_suspended(function()
-			sampSendClickTextdraw(2064)
-			wait(300)
-			sampSendClickTextdraw(158)
-		end)
-		atfll:run()
-		electofill = false
+	if carfuncs.autofill[0] == true then
+		--[[print("ID: "..id)
+		print("DATA: "..data.text)	
+		print("POS_X: "..data.position.x)
+		print("POS_Y: "..data.position.y)]]
+		if data.text == "ELECTRIC" then
+			electofill = true
+		end
+		if data.text == "DIESEL" or data.text == "A92" or data.text == "A95" or data.text == "A98" then
+			oilfill = true
+		end
+		if data.text == "FILL" then
+			fill_id = id
+		end
+		if data.text == "$0" then
+			cost_id = id
+		end
+		if data.text == "LD_BEAT:chit" and data.selectable == 1 then
+			arrow_id = id
+		end
+		if electofill == true then
+			atfll = lua_thread.create_suspended(function()
+				sampSendClickTextdraw(cost_id)
+				wait(450)
+				sampSendClickTextdraw(fill_id)
+			end)
+			atfll:run()
+			electofill = false
+		end
+			if oilfill == true then
+				atfll = lua_thread.create_suspended(function()
+					wait(400)
+					if prodaoilfill == true then
+						sampSendClickTextdraw(cost_id)
+						wait(250)
+						sampSendClickTextdraw(fill_id)
+					end
+				end)
+				atfll:run()
+				oilfill = false
+				prodaoilfill = false
+				
+			end
+
 	end
 end
 
 function sampev.onDisplayGameText(style, time, text)
+
 	if carfuncs.autofill[0] == true then
 		if fillcar == true then
 			atfll = lua_thread.create_suspended(function()
 				if text:find("~w~This type of fuel ~r~ is not suitable~w~~n~ for your vehicles!") then
-					sampSendClickTextdraw(106)
-					wait(250)
+					sampSendClickTextdraw(arrow_id)
+					prodaoilfill = false
 				else
-					sampSendClickTextdraw(2064)
-					sampSendClickTextdraw(120)
+					prodaoilfill = true
 				end
 			end)
 			atfll:run()
 		end
 	end
+
 	if carfuncs.autotwinturbo[0] then
 		if isCharInAnyCar(playerPed) then
 			if text:find('~n~~n~~n~~n~~n~~n~~n~~n~~w~Style: ~g~Comfort!') then
@@ -2360,7 +2375,9 @@ function getSprintLocalPlayer() -- Original: https://blast.hk/threads/13380/post
 end
 
 function sampev.onSetPlayerDrunk(drunkLevel)
-    return {1}
+	if boolhud.adrunk[0] then
+    	return {1}
+	end
 end
 
 function sampev.onShowDialog(id, style, title, button1, button2, text)
