@@ -189,7 +189,10 @@ local hcfg = {
 	hkstrobe = {},
 	rcveh = {},
 	surf = {},
-	scate = {}
+	scate = {},
+	domkrat = {},
+	antifreeze = {},
+	shar = {}
 }
 
 filename = getGameDirectory()..'\\moonloader\\config\\ezHelper\\binds.cfg'
@@ -247,7 +250,14 @@ surf.v = hcfg.surf
 local scate = {}
 scate.v = hcfg.scate
 
+local domkrat = {}
+domkrat.v = hcfg.domkrat
 
+local antifreeze = {}
+antifreeze.v = hcfg.antifreeze
+
+local shar = {}
+shar.v = hcfg.shar
 
 ---------------------------
 ---------------------------
@@ -389,6 +399,7 @@ setmetatable(popupwindow, ui_meta)
 local namePur = 0
 local hidefam = new.bool(inik.fpsup.hidefam)
 local cursor = true
+local cursortw = true
 local rhpX, rhpY = mainIni.hudpos.rhpX, mainIni.hudpos.rhpY
 local hpX, hpY = mainIni.hudpos.hpX, mainIni.hudpos.hpY
 local energyX, energyY = mainIni.hudpos.energyX, mainIni.hudpos.energyY
@@ -847,6 +858,44 @@ function hotkeyactivate()
 				sampSendChat('/skate')
 			end
 		end
+
+		if #domkrat.v < 2 then
+			if wasKeyPressed(domkrat.v[1]) then
+				sampSendChat('/domkrat')
+			end
+		else
+			if isKeyDown(domkrat.v[1]) and wasKeyPressed(domkrat.v[2]) then
+				sampSendChat('/domkrat')
+			end
+		end
+
+		if #antifreeze.v < 2 then
+			if wasKeyPressed(antifreeze.v[1]) and not isCharInAnyCar(1) and not isCharInAnyHeli(1) and not isCharInAnyPlane(1) and not isCharInAnyBoat(1) and not isCharInAnyPoliceVehicle(1) then
+				freezeCharPosition(PLAYER_PED, true)
+				freezeCharPosition(PLAYER_PED, false)
+				setPlayerControl(PLAYER_HANDLE, true)
+				restoreCameraJumpcut()
+				clearCharTasksImmediately(PLAYER_PED)
+			end
+		else
+			if isKeyDown(antifreeze.v[1]) and wasKeyPressed(antifreeze.v[2]) and not isCharInAnyCar(1) and not isCharInAnyHeli(1) and not isCharInAnyPlane(1) and not isCharInAnyBoat(1) and not isCharInAnyPoliceVehicle(1) then
+				freezeCharPosition(PLAYER_PED, true)
+				freezeCharPosition(PLAYER_PED, false)
+				setPlayerControl(PLAYER_HANDLE, true)
+				restoreCameraJumpcut()
+				clearCharTasksImmediately(PLAYER_PED)
+			end
+		end
+
+		if #shar.v < 2 then
+			if wasKeyPressed(shar.v[1]) then
+				sampSendChat('/balloon')
+			end
+		else
+			if isKeyDown(shar.v[1]) and wasKeyPressed(shar.v[2]) then
+				sampSendChat('/balloon')
+			end
+		end
 	end
 end
 
@@ -881,11 +930,10 @@ local secondFrame = imgui.OnFrame(
 		huds.HideCursor = cursor
 		if boolhud.huds[0] == true then
 			if spawn == true then
-				invent = sampTextdrawIsExists(2106)
-				txdraw = sampTextdrawIsExists(2064)
+				invent = sampTextdrawIsExists(inv)
 			end		
 			
-			if not isPauseMenuActive() and invent == false and txdraw == false then
+			if not isPauseMenuActive() and invent == false then
 
 				imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 1.24, 0), imgui.Cond.Always)
 				imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
@@ -983,7 +1031,7 @@ local TimeWeatherFrame = imgui.OnFrame(
 	function() return TWWindow.alpha > 0.00 end, -- Указываем здесь данное условие, тем самым рендеря окно только в том случае, если его прозрачность больше нуля
     function(player)
         imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 1.15), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(258, 150), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowSize(imgui.ImVec2(258, 165), imgui.Cond.FirstUseEver)
 		imgui.PushStyleVarFloat(imgui.StyleVar.Alpha, TWWindow.alpha)
         imgui.Begin("TimeWeather", TimeWeatherWindow, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
 		imgui.DisableInput = false
@@ -991,6 +1039,13 @@ local TimeWeatherFrame = imgui.OnFrame(
 			TWWindow.switch()
 			TimeWeatherWindow[0] = true
 		end
+		if isKeyDown(VK_LSHIFT) then
+			cursortw = true
+		else
+			cursortw = false
+		end
+
+		player.HideCursor = cursortw
 		imgui.BeginChild("Time&Weather",imgui.ImVec2(250, 120), true)
 			imgui.PushFont(mainfont)
 			imgui.CenterTextColoredRGB("{1E90FF}Время и погода:")
@@ -1030,6 +1085,7 @@ local TimeWeatherFrame = imgui.OnFrame(
 			hpfont, mainfont, 14.000000, 92.500000)
 		imgui.EndChild()
 		imgui.CenterTextColoredRGB('Нажмите ESC, чтобы вернуться назад')
+		imgui.CenterTextColoredRGB('Зажмите SHIFT, чтобы крутить камерой')
 		imgui.End()
 		imgui.PopStyleVar(1)
 	end
@@ -1049,7 +1105,7 @@ local newFrame = imgui.OnFrame(
 					rwindow.switch()
 					renderWindow[0] = true
 				end
-
+				
                 imgui.SetCursorPos(imgui.ImVec2(5.000000,5.000000));
 				imgui.PushFont(mainfont)
 				if imgui.AnimatedButton(fa.ICON_FA_HOME .. u8"Главная", imgui.ImVec2(170, 55)) then menu = 1 end
@@ -1334,7 +1390,7 @@ local newFrame = imgui.OnFrame(
 				if boolhud.huds[0] == true then
 					hud[0] = true
 					imgui.PushFont(smallfont)
-					imgui.SetCursorPos(imgui.ImVec2(380.00000,74.600000));
+					imgui.SetCursorPos(imgui.ImVec2(382.00000,73.600000));
 					imgui.Text(fa.ICON_FA_COG)
 					imgui.PopFont()
 					if imgui.IsItemClicked() then
@@ -1502,8 +1558,7 @@ local newFrame = imgui.OnFrame(
 					mainIni.carfuncs.autofill = carfuncs.autofill[0]
 					inicfg.save(mainIni, directIni)
 				end
-				imgui.ezHint('{FFFFFF}Автоматически выбирает топливо и заправялет траспорт.\n{FF0000}[NEW]{FFFFFF} Так же автоматически заряжает электрокары.\n'..
-				'{808080}Иногда может не работать из-за того, что меняются текстдравы на сервере.\n{808080}Если AutoFill не работает на сервере больше дня, отпишите мне.',
+				imgui.ezHint('{FFFFFF}Автоматически выбирает топливо и заправялет траспорт.\n{FF0000}[NEW]{FFFFFF} Так же автоматически заряжает электрокары.',
 				hpfont, mainfont, 14.000000, 51.000000)
 
 				imgui.SetCursorPos(imgui.ImVec2(30.000000,73.000000));
@@ -1553,7 +1608,7 @@ local newFrame = imgui.OnFrame(
 
 				if carfuncs.strobe[0] == true then
 					imgui.PushFont(smallfont)
-					imgui.SetCursorPos(imgui.ImVec2(105.00000,102.600000));
+					imgui.SetCursorPos(imgui.ImVec2(107.35,102.6));
 					imgui.Text(fa.ICON_FA_COG)
 					imgui.PopFont()
 					if imgui.IsItemClicked() then
@@ -1966,7 +2021,8 @@ local newFrame = imgui.OnFrame(
 				u8'04.08.2022 - 1.4.3 - оптимизировал скрипт, спасибо за помощь')
 				imgui.SameLine(); imgui.Link('https://t.me/DoubleTapInside','Double Tap Inside')
 				imgui.WrappedTextRGB(u8'26.08.2022 - 1.4.4 - фикс бага новых окон лаунчера от АРЗ, новые хоткеи\n'..
-				u8'08.09.2022 - 1.4.5 - фикс бага автозаравки, новая функция "АнтиТряска", убрал hphud, так как в нём нет необходимости.')
+				u8'08.09.2022 - 1.4.5 - фикс бага автозаравки, новая функция "АнтиТряска", убрал hphud, так как в нём нет необходимости.\n'..
+				u8'20.09.2022 - 1.4.7 - новые хоткеи, фикс багов.')
 				imgui.PopFont()
 				imgui.EndChild()
 				imgui.SetCursorPosX(300)
@@ -1988,11 +2044,12 @@ local newFrame = imgui.OnFrame(
 )
 
 function hotkeylist()
-			imgui.SetCursorPos(imgui.ImVec2(200.000000,25.000000));
-				imgui.BeginChild("hotkey",imgui.ImVec2(430, 366), false)
+		imgui.SetCursorPos(imgui.ImVec2(200.000000,25.000000));
+		imgui.BeginChild("hotkey",imgui.ImVec2(430, 366), false)
+		imgui.PushFont(smallfont)
 				imgui.CenterTextColoredRGB('{1E90FF}Меню хоткеев')
 				imgui.Separator()
-				imgui.BeginChild("other",imgui.ImVec2(215, 55), true)
+				imgui.BeginChild("other",imgui.ImVec2(220, 55), true)
 				imgui.CenterTextColoredRGB('{1E90FF}Основное')
 
 					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
@@ -2005,37 +2062,37 @@ function hotkeylist()
 		
 				imgui.EndChild()
 
-			imgui.SetCursorPos(imgui.ImVec2(225.000000,22.000000));
-				imgui.BeginChild("heal",imgui.ImVec2(180, 130), true)
+			imgui.SetCursorPos(imgui.ImVec2(230.000000,22.000000));
+				imgui.BeginChild("heal",imgui.ImVec2(195, 130), true)
 				imgui.CenterTextColoredRGB('{1E90FF}Предметы')
 
-					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
+					imgui.SetCursorPos(imgui.ImVec2(10,25 + 3));
 					imgui.TextColoredRGB('Аптечка')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 10, 25))
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 25))
 					if imgui.HotKey(u8'##aidkit', aidkit, 90) then
 						hcfg.aidkit = {unpack(aidkit.v)}
 						ecfg.save(hkname, hcfg)
 					end
 
-					imgui.SetCursorPos(imgui.ImVec2(5,50 + 3));
+					imgui.SetCursorPos(imgui.ImVec2(10,50 + 3));
 					imgui.TextColoredRGB('Наркотики')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 10, 50))
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 50))
 					if imgui.HotKey(u8'##narko', narko, 90) then
 						hcfg.narko = {unpack(narko.v)}
 						ecfg.save(hkname, hcfg)
 					end
 
-					imgui.SetCursorPos(imgui.ImVec2(5,75 + 3));
+					imgui.SetCursorPos(imgui.ImVec2(10,75 + 3));
 					imgui.TextColoredRGB('Бронежилет')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 10, 75))
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 75))
 					if imgui.HotKey(u8'##armor', armor, 90) then
 						hcfg.armor = {unpack(armor.v)}
 						ecfg.save(hkname, hcfg)
 					end
 
-					imgui.SetCursorPos(imgui.ImVec2(5,100 + 3));
+					imgui.SetCursorPos(imgui.ImVec2(10,100 + 3));
 					imgui.TextColoredRGB('Пиво')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 10, 100))
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 100))
 					if imgui.HotKey(u8'##beer', beer, 90) then
 						hcfg.beer = {unpack(beer.v)}
 						ecfg.save(hkname, hcfg)
@@ -2044,7 +2101,7 @@ function hotkeylist()
 				imgui.EndChild()
 
 			imgui.SetCursorPos(imgui.ImVec2(0.000000,85.000000));	
-				imgui.BeginChild("acs",imgui.ImVec2(215, 105), true)
+				imgui.BeginChild("acs",imgui.ImVec2(220, 130), true)
 				imgui.CenterTextColoredRGB('{1E90FF}Аксессуары')
 
 					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
@@ -2070,37 +2127,67 @@ function hotkeylist()
 						hcfg.scate = {unpack(scate.v)}
 						ecfg.save(hkname, hcfg)
 					end
+
+					imgui.SetCursorPos(imgui.ImVec2(5,100 + 3));
+					imgui.TextColoredRGB('Шар')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 100))
+					if imgui.HotKey(u8'##shar', shar, 90) then
+						hcfg.shar = {unpack(shar.v)}
+						ecfg.save(hkname, hcfg)
+					end
 				imgui.EndChild()
 
-			imgui.SetCursorPos(imgui.ImVec2(225.000000,160.000000));
-			imgui.BeginChild("car",imgui.ImVec2(180, 105), true)
+			imgui.SetCursorPos(imgui.ImVec2(230.000000,160.000000));
+			imgui.BeginChild("car",imgui.ImVec2(195, 130), true)
 			imgui.CenterTextColoredRGB('{1E90FF}Автомобиль')
 
-				imgui.SetCursorPos(imgui.ImVec2(9,25 + 3));
+				imgui.SetCursorPos(imgui.ImVec2(10,25 + 3));
 				imgui.TextColoredRGB('Заправить')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Заправить')).x + 15, 25))
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 25))
 				if imgui.HotKey(u8'##fllcar', fllcar, 90) then
 					hcfg.fllcar = {unpack(fllcar.v)}
 					ecfg.save(hkname, hcfg)
 				end
 
-				imgui.SetCursorPos(imgui.ImVec2(8,50 + 3));
+				imgui.SetCursorPos(imgui.ImVec2(10,50 + 3));
 				imgui.TextColoredRGB('Починить')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Заправить')).x + 15, 50))
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 50))
 				if imgui.HotKey(u8'##repcar', repcar, 90) then
 					hcfg.repcar = {unpack(repcar.v)}
 					ecfg.save(hkname, hcfg)
 				end
 
-				imgui.SetCursorPos(imgui.ImVec2(8,75 + 3));
+				imgui.SetCursorPos(imgui.ImVec2(10,75 + 3));
+				imgui.TextColoredRGB('Домкрат')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 75))
+				if imgui.HotKey(u8'##domkrat', domkrat, 90) then
+					hcfg.domkrat = {unpack(domkrat.v)}
+					ecfg.save(hkname, hcfg)
+				end
+
+				imgui.SetCursorPos(imgui.ImVec2(10,100 + 3));
 				imgui.TextColoredRGB('Стробы')
-				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Заправить')).x + 15, 75))
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 100))
 				if imgui.HotKey(u8'##hkstrobe', hkstrobe, 90) then
 					hcfg.hkstrobe = {unpack(hkstrobe.v)}
 					ecfg.save(hkname, hcfg)
 				end
 
 			imgui.EndChild()
+
+			imgui.SetCursorPos(imgui.ImVec2(0.000000,223.000000));	
+				imgui.BeginChild("CheatFuncs	",imgui.ImVec2(220, 55), true)
+				imgui.CenterTextColoredRGB('{FF0000}Чит-Функции')
+
+					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
+					imgui.TextColoredRGB('Анти-Фриз')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 25))
+					if imgui.HotKey(u8'##antfrz', antifreeze, 90) then
+						hcfg.antifreeze = {unpack(antifreeze.v)}
+						ecfg.save(hkname, hcfg)
+					end
+				imgui.EndChild()
+			
 end
 
 function imgui.Link(link,name,myfunc)
@@ -2188,22 +2275,26 @@ local cost_id
 local arrow_id
 local prodaoilfill = false
 function sampev.onShowTextDraw(id, data)
+	if data.text == "…H‹EHЏAP’" or data.text == "INVENTORY" then
+		inv = id
+	end
+
 	if carfuncs.autofill[0] == true then
-		--[[print("ID: "..id)
-		print("DATA: "..data.text)	
-		print("POS_X: "..data.position.x)
-		print("POS_Y: "..data.position.y)]]
+		--print("ID: "..id)
+		--print("DATA: "..data.text)	
+		--print("POS_X: "..data.position.x)
+		--print("POS_Y: "..data.position.y)
 		if data.text == "ELECTRIC" then
 			electofill = true
 		end
 		if data.text == "DIESEL" or data.text == "A92" or data.text == "A95" or data.text == "A98" then
 			oilfill = true
 		end
-		if data.text == "FILL" then
-			fill_id = id
-		end
 		if data.text == "$0" then
 			cost_id = id
+		end
+		if data.text == "FILL" then
+			fill_id = id
 		end
 		if data.text == "LD_BEAT:chit" and data.selectable == 1 then
 			arrow_id = id
@@ -2359,6 +2450,7 @@ function onWindowMessage(msg, wparam, lparam)
             if msg == 0x101 then
 				rwindow.switch()
 				TWWindow.switch()
+				cursor = true
 				sampSetChatDisplayMode(2)
             end
         end
