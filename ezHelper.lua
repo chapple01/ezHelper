@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.4.7")
+script_version("1.4.8")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -12,8 +12,8 @@ local inicfg = require "inicfg"
 local ecfg = require "ecfg"
 local directIni = "ezHelper/ezHelper"
 local imgui = require 'mimgui'
-local new = imgui.new
 local ffi = require 'ffi'
+local new, str, sizeof = imgui.new, ffi.string, ffi.sizeof
 local fa = require('fAwesome5')
 local memory = require 'memory'
 local bass = require "lib.bass"
@@ -447,6 +447,8 @@ vkeys.key_names[vkeys.VK_DIVIDE] 			= 'Num /'
 --ENDKEYSNAMES------------------
 --\/\/\/\/\/\/\/\/\\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\/\//\\//\/\/\/\/\/\\/\/\/\/--
 
+local custommimguiStyle = new.bool()
+
 --MAIN
 function main() 
     while not isSampAvailable() do
@@ -466,9 +468,11 @@ function main()
 			end
 		end
 	end)
-	sampRegisterChatCommand('showdoor',function ()
+	sampRegisterChatCommand('infoveh',function ()
         act = not act
-		sampSetCursorMode(0)
+    end)
+	sampRegisterChatCommand('mdemo',function ()
+        custommimguiStyle[0] = not custommimguiStyle[0]
     end)
     lua_thread.create(carfunc)
 	sampRegisterChatCommand("ezhelper", function()
@@ -573,8 +577,6 @@ function main()
 
 		lua_thread.create(strobe)
 		lua_thread.create(famhide)
-
-
 
     while true do
 		wait(0)
@@ -1090,6 +1092,18 @@ local TimeWeatherFrame = imgui.OnFrame(
 		imgui.PopStyleVar(1)
 	end
 )
+mcount = 0
+imgui.OnFrame(function() return custommimguiStyle[0] end, function()
+    imgui.Begin("mimgui custom style")
+    if imgui.Button('Save from clipboard') then
+        math.randomseed(os.time())
+        if getClipboardText() then io.open(getWorkingDirectory()..'\\'..thisScript().name:gsub('.lua', '')..'-Custom_mimgui_Style-'..mcount..'['..math.random(1111111,999999999)..'].txt', 'w'):write(getClipboardText()):close() end
+        mcount = mcount + 1
+    end
+    imgui.Separator() imgui.Spacing() imgui.Spacing() imgui.Spacing()  imgui.Spacing() imgui.Separator()
+    imgui.ShowStyleEditor()
+    imgui.End()
+end)
 
 local newFrame = imgui.OnFrame(
 	function() return rwindow.alpha > 0.00 end, -- Указываем здесь данное условие, тем самым рендеря окно только в том случае, если его прозрачность больше нуля
@@ -1967,7 +1981,7 @@ local newFrame = imgui.OnFrame(
 					'		{E6E6FA}/sw {FFD700}[0-45]{E6E6FA} - изменить погоду\n' ..
 					'	{00BFFF}Прочее:\n' ..
 					'		{E6E6FA}/delltd - удаление всех текстдравов на экране\n' ..
-					'		{E6E6FA}/showdoor - показывает, открыта ли машина')
+					'		{E6E6FA}/infoveh - показывает, открыта ли машина')
 					imgui.PopFont()
 					imgui.EndChild()
 
@@ -2021,11 +2035,13 @@ local newFrame = imgui.OnFrame(
 				u8'04.08.2022 - 1.4.3 - оптимизировал скрипт, спасибо за помощь')
 				imgui.SameLine(); imgui.Link('https://t.me/DoubleTapInside','Double Tap Inside')
 				imgui.WrappedTextRGB(u8'26.08.2022 - 1.4.4 - фикс бага новых окон лаунчера от АРЗ, новые хоткеи\n'..
-				u8'08.09.2022 - 1.4.5 - фикс бага автозаравки, новая функция "АнтиТряска", убрал hphud, так как в нём нет необходимости.\n'..
-				u8'20.09.2022 - 1.4.7 - новые хоткеи, фикс багов.')
+				u8'08.09.2022 - 1.4.5 - фикс бага автозаправки, новая функция "АнтиТряска", убрал hphud, так как в нём нет необходимости.\n'..
+				u8'20.09.2022 - 1.4.7 - новые хоткеи, фикс багов.\n'..
+				u8'01.10.2022 - 1.4.8 - очередной фикс бага с автозаправкой электрокаров, изменил название команды /showdoor на /infoveh, фикс бага со шрифтом.')
 				imgui.PopFont()
 				imgui.EndChild()
-				imgui.SetCursorPosX(300)
+				puX = imgui.GetWindowWidth()
+				imgui.SetCursorPos(imgui.ImVec2(puX / 2 - 35,345))
 				imgui.PushFont(mainfont)
 				imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign, imgui.ImVec2(0.662, 0.55))
 				if imgui.Button(fa.ICON_FA_TIMES, imgui.ImVec2(50, 50)) then
@@ -2044,98 +2060,99 @@ local newFrame = imgui.OnFrame(
 )
 
 function hotkeylist()
-		imgui.SetCursorPos(imgui.ImVec2(200.000000,25.000000));
-		imgui.BeginChild("hotkey",imgui.ImVec2(430, 366), false)
-		imgui.PushFont(smallfont)
-				imgui.CenterTextColoredRGB('{1E90FF}Меню хоткеев')
-				imgui.Separator()
-				imgui.BeginChild("other",imgui.ImVec2(220, 55), true)
-				imgui.CenterTextColoredRGB('{1E90FF}Основное')
+	imgui.SetCursorPos(imgui.ImVec2(200.000000,25.000000));
+	imgui.BeginChild("hotkey",imgui.ImVec2(430, 366), false)
+	imgui.PushFont(smallfont)
+	imgui.CenterTextColoredRGB('{1E90FF}Меню хоткеев')
+	imgui.Separator()
 
-					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
-					imgui.TextColoredRGB('Открытие скрипта')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8'Открытие скрипта').x + 10, 25))
-					if imgui.HotKey(u8'##open', openscript, 90) then
-						hcfg.openscript = {unpack(openscript.v)}
-						ecfg.save(hkname, hcfg)
-					end
-		
-				imgui.EndChild()
+			imgui.BeginChild("other",imgui.ImVec2(220, 55), true)
+			imgui.CenterTextColoredRGB('{1E90FF}Основное')
+
+				imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
+				imgui.TextColoredRGB('Открытие скрипта')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8'Открытие скрипта').x + 10, 25))
+				if imgui.HotKey(u8'##open', openscript, 90) then
+					hcfg.openscript = {unpack(openscript.v)}
+					ecfg.save(hkname, hcfg)
+				end
+	
+			imgui.EndChild()
 
 			imgui.SetCursorPos(imgui.ImVec2(230.000000,22.000000));
-				imgui.BeginChild("heal",imgui.ImVec2(195, 130), true)
-				imgui.CenterTextColoredRGB('{1E90FF}Предметы')
+			imgui.BeginChild("heal",imgui.ImVec2(195, 130), true)
+			imgui.CenterTextColoredRGB('{1E90FF}Предметы')
 
-					imgui.SetCursorPos(imgui.ImVec2(10,25 + 3));
-					imgui.TextColoredRGB('Аптечка')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 25))
-					if imgui.HotKey(u8'##aidkit', aidkit, 90) then
-						hcfg.aidkit = {unpack(aidkit.v)}
-						ecfg.save(hkname, hcfg)
-					end
+				imgui.SetCursorPos(imgui.ImVec2(10,25 + 3));
+				imgui.TextColoredRGB('Аптечка')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 25))
+				if imgui.HotKey(u8'##aidkit', aidkit, 90) then
+					hcfg.aidkit = {unpack(aidkit.v)}
+					ecfg.save(hkname, hcfg)
+				end
 
-					imgui.SetCursorPos(imgui.ImVec2(10,50 + 3));
-					imgui.TextColoredRGB('Наркотики')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 50))
-					if imgui.HotKey(u8'##narko', narko, 90) then
-						hcfg.narko = {unpack(narko.v)}
-						ecfg.save(hkname, hcfg)
-					end
+				imgui.SetCursorPos(imgui.ImVec2(10,50 + 3));
+				imgui.TextColoredRGB('Наркотики')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 50))
+				if imgui.HotKey(u8'##narko', narko, 90) then
+					hcfg.narko = {unpack(narko.v)}
+					ecfg.save(hkname, hcfg)
+				end
 
-					imgui.SetCursorPos(imgui.ImVec2(10,75 + 3));
-					imgui.TextColoredRGB('Бронежилет')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 75))
-					if imgui.HotKey(u8'##armor', armor, 90) then
-						hcfg.armor = {unpack(armor.v)}
-						ecfg.save(hkname, hcfg)
-					end
+				imgui.SetCursorPos(imgui.ImVec2(10,75 + 3));
+				imgui.TextColoredRGB('Бронежилет')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 75))
+				if imgui.HotKey(u8'##armor', armor, 90) then
+					hcfg.armor = {unpack(armor.v)}
+					ecfg.save(hkname, hcfg)
+				end
 
-					imgui.SetCursorPos(imgui.ImVec2(10,100 + 3));
-					imgui.TextColoredRGB('Пиво')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 100))
-					if imgui.HotKey(u8'##beer', beer, 90) then
-						hcfg.beer = {unpack(beer.v)}
-						ecfg.save(hkname, hcfg)
-					end
+				imgui.SetCursorPos(imgui.ImVec2(10,100 + 3));
+				imgui.TextColoredRGB('Пиво')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Бронежилет')).x + 15, 100))
+				if imgui.HotKey(u8'##beer', beer, 90) then
+					hcfg.beer = {unpack(beer.v)}
+					ecfg.save(hkname, hcfg)
+				end
 
-				imgui.EndChild()
+			imgui.EndChild()
 
 			imgui.SetCursorPos(imgui.ImVec2(0.000000,85.000000));	
-				imgui.BeginChild("acs",imgui.ImVec2(220, 130), true)
-				imgui.CenterTextColoredRGB('{1E90FF}Аксессуары')
+			imgui.BeginChild("acs",imgui.ImVec2(220, 130), true)
+			imgui.CenterTextColoredRGB('{1E90FF}Аксессуары')
 
-					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
-					imgui.TextColoredRGB('Активация ПУ')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 25))
-					if imgui.HotKey(u8'##rcveh', rcveh, 90) then
-						hcfg.rcveh = {unpack(rcveh.v)}
-						ecfg.save(hkname, hcfg)
-					end
+				imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
+				imgui.TextColoredRGB('Активация ПУ')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 25))
+				if imgui.HotKey(u8'##rcveh', rcveh, 90) then
+					hcfg.rcveh = {unpack(rcveh.v)}
+					ecfg.save(hkname, hcfg)
+				end
 
-					imgui.SetCursorPos(imgui.ImVec2(5,50 + 3));
-					imgui.TextColoredRGB('Доска для сёрфа')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 50))
-					if imgui.HotKey(u8'##surf', surf, 90) then
-						hcfg.surf = {unpack(surf.v)}
-						ecfg.save(hkname, hcfg)
-					end
+				imgui.SetCursorPos(imgui.ImVec2(5,50 + 3));
+				imgui.TextColoredRGB('Доска для сёрфа')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 50))
+				if imgui.HotKey(u8'##surf', surf, 90) then
+					hcfg.surf = {unpack(surf.v)}
+					ecfg.save(hkname, hcfg)
+				end
 
-					imgui.SetCursorPos(imgui.ImVec2(5,75 + 3));
-					imgui.TextColoredRGB('Скейт')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 75))
-					if imgui.HotKey(u8'##scate', scate, 90) then
-						hcfg.scate = {unpack(scate.v)}
-						ecfg.save(hkname, hcfg)
-					end
+				imgui.SetCursorPos(imgui.ImVec2(5,75 + 3));
+				imgui.TextColoredRGB('Скейт')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 75))
+				if imgui.HotKey(u8'##scate', scate, 90) then
+					hcfg.scate = {unpack(scate.v)}
+					ecfg.save(hkname, hcfg)
+				end
 
-					imgui.SetCursorPos(imgui.ImVec2(5,100 + 3));
-					imgui.TextColoredRGB('Шар')
-					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 100))
-					if imgui.HotKey(u8'##shar', shar, 90) then
-						hcfg.shar = {unpack(shar.v)}
-						ecfg.save(hkname, hcfg)
-					end
-				imgui.EndChild()
+				imgui.SetCursorPos(imgui.ImVec2(5,100 + 3));
+				imgui.TextColoredRGB('Шар')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 100))
+				if imgui.HotKey(u8'##shar', shar, 90) then
+					hcfg.shar = {unpack(shar.v)}
+					ecfg.save(hkname, hcfg)
+				end
+			imgui.EndChild()
 
 			imgui.SetCursorPos(imgui.ImVec2(230.000000,160.000000));
 			imgui.BeginChild("car",imgui.ImVec2(195, 130), true)
@@ -2176,8 +2193,8 @@ function hotkeylist()
 			imgui.EndChild()
 
 			imgui.SetCursorPos(imgui.ImVec2(0.000000,223.000000));	
-				imgui.BeginChild("CheatFuncs	",imgui.ImVec2(220, 55), true)
-				imgui.CenterTextColoredRGB('{FF0000}Чит-Функции')
+			imgui.BeginChild("CheatFuncs	",imgui.ImVec2(220, 55), true)
+			imgui.CenterTextColoredRGB('{FF0000}Чит-Функции')
 
 					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
 					imgui.TextColoredRGB('Анти-Фриз')
@@ -2186,7 +2203,11 @@ function hotkeylist()
 						hcfg.antifreeze = {unpack(antifreeze.v)}
 						ecfg.save(hkname, hcfg)
 					end
-				imgui.EndChild()
+
+		imgui.EndChild()
+		
+	imgui.PopFont()
+	imgui.EndChild()
 			
 end
 
@@ -2270,9 +2291,9 @@ function setWeather(weather)
 	forceWeatherNow(weather)
 end
 
-local fill_id
 local cost_id
 local arrow_id
+local fill_id
 local prodaoilfill = false
 function sampev.onShowTextDraw(id, data)
 	if data.text == "…H‹EHЏAP’" or data.text == "INVENTORY" then
@@ -2290,7 +2311,7 @@ function sampev.onShowTextDraw(id, data)
 		if data.text == "DIESEL" or data.text == "A92" or data.text == "A95" or data.text == "A98" then
 			oilfill = true
 		end
-		if data.text == "$0" then
+		if data.text == "$0" or data.text == "FREE" then
 			cost_id = id
 		end
 		if data.text == "FILL" then
@@ -2301,6 +2322,7 @@ function sampev.onShowTextDraw(id, data)
 		end
 		if electofill == true then
 			atfll = lua_thread.create_suspended(function()
+				wait(150)
 				sampSendClickTextdraw(cost_id)
 				wait(450)
 				sampSendClickTextdraw(fill_id)
@@ -2648,10 +2670,11 @@ function apply_custom_style()
 	local colors = style.Colors
 	local clr = imgui.Col
 	local ImVec4 = imgui.ImVec4
-	style.WindowRounding = 6
-	style.ChildRounding = 1.0
+	style.WindowRounding = 8
+	style.ChildRounding = 6
+	style.PopupRounding = 4
 	style.WindowTitleAlign = imgui.ImVec2(0.5, 0.5)
-	style.FrameRounding = 1.0
+	style.FrameRounding = 4
 	style.ItemSpacing = imgui.ImVec2(4.0, 4.0)
 	style.ScrollbarSize = 11.5
 	style.ScrollbarRounding = 6
