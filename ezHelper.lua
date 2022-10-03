@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.4.8")
+script_version("1.4.9")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -17,6 +17,7 @@ local new, str, sizeof = imgui.new, ffi.string, ffi.sizeof
 local fa = require('fAwesome5')
 local memory = require 'memory'
 local bass = require "lib.bass"
+local pie = require 'mimgui_piemenu'
 local panic = getGameDirectory().."\\moonloader\\resource\\ezHelper\\panic.mp3"
 local notification = getGameDirectory().."\\moonloader\\resource\\ezHelper\\notification.mp3"
 
@@ -27,8 +28,10 @@ local TimeWeatherWindow = new.bool(false)
 local updatewindow = new.bool(false)
 local hud = new.bool(true)
 local obvodka = new.bool(false)
+local widget = new.bool(true)
 local sizeX, sizeY = getScreenResolution()
-local font = renderCreateFont('segmdl2', 10, 5) --(пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
+local font = renderCreateFont('segmdl2', 10, 5)
+local bigfont = renderCreateFont('segmdl2', 14, 5)
 local lasthp = 0
 local razn = nil
 local hp = 0
@@ -37,6 +40,12 @@ local vsprint = false
 local vwater = false
 local spawn = false
 local fillcar = false
+
+local pie_mode = new.bool(true)
+
+local nowTime = os.date("%H:%M:%S", os.time())
+local sesOnline = new.int(0)
+local fps = 0
 
 imgui.OnInitialize(function()
 	apply_custom_style()
@@ -47,14 +56,19 @@ imgui.OnInitialize(function()
 	config.GlyphOffset.x = -5.0
     local glyph_ranges = imgui.GetIO().Fonts:GetGlyphRangesCyrillic()
     local iconRanges = imgui.new.ImWchar[3](fa.min_range, fa.max_range, 0)
-    mainfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 16.0, nil, glyph_ranges) --пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
-   	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 20.0, config, iconRanges) --пїЅпїЅпїЅпїЅпїЅпїЅ
-	smallfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 14.0, nil, glyph_ranges) --пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
-	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 15.0, config, iconRanges) --пїЅпїЅпїЅпїЅпїЅпїЅ
+    mainfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 16.0, nil, glyph_ranges)
+   	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 20.0, config, iconRanges)
+	smallfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 14.0, nil, glyph_ranges)
+	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 15.0, config, iconRanges)
+	piefont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 15.0, nil, glyph_ranges)
+	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 22.0, config, iconRanges)
 	brandfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 15.0, nil, glyph_ranges) -- brands font
 	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-brands-400.ttf', 20.0, config, iconRanges) --brands font
-	hpfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 18.0, nil, glyph_ranges) --пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
-   	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 16.0, config, iconRanges) --пїЅпїЅпїЅпїЅпїЅпїЅ
+	hpfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 18.0, nil, glyph_ranges)
+   	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 16.0, config, iconRanges)
+
+ 	wfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 24.0, nil, glyph_ranges)
+	sfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 10.0, nil, glyph_ranges)
 
 	imgui.GetIO().IniFilename = nil
 end)
@@ -112,7 +126,7 @@ local mainIni = inicfg.load({
 		fixgps = false,
 		fixspawn = false,
 		fixvint = false,
-		fixarzdialogs = false,
+		fixarzdialogs = false
 	},
 	fpsup =
 	{
@@ -171,6 +185,10 @@ local mainIni = inicfg.load({
 		hours = 12,
 		weather = 0,
 		realtime = true,
+	},
+	onDay = {
+		today = os.date("%a"),
+		online = 0
 	}
 }, directIni)
 
@@ -281,6 +299,12 @@ refresh_binds()
 
 if not doesFileExist("moonloader/config/ezHelper/ezHelper.ini") then inicfg.save(mainIni, "ezHelper/ezHelper.ini") end
 inik = inicfg.load(mainIni, 'ezHelper/ezHelper')
+
+--==[[ ВАНЯ, НЕ ЗАБУДЬ ЭТО ПОСЛЕ ОБНОВЛЕНИЯ УДАЛИТЬ, ТАК КАК МАКСИМ СКАЧАЕТ НОВЫЙ РЕНДЕР]]==--
+if doesFileExist("moonloader/RenderFomikus.lua") then
+	os.remove("moonloader/RenderFomikus.lua")
+end
+--==[[!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!]]==--
 
 local boolfixes = {
 	fixdver = new.bool(inik.fixes.fixdver),
@@ -414,6 +438,11 @@ local checkpopupwindow = false
 local stroboscope = false
 local ffixarzdialogs = false
 
+
+local ping =  0
+local servonl = 0
+local connectingTime = 0
+
 local fa_icon = {
 	['ICON_FA_VK'] = "\xef\x86\x89",
 	['ICON_FA_TELEGRAM_PLANE'] = "\xef\x8f\xbe",
@@ -447,8 +476,6 @@ vkeys.key_names[vkeys.VK_DIVIDE] 			= 'Num /'
 --ENDKEYSNAMES------------------
 --\/\/\/\/\/\/\/\/\\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\/\//\\//\/\/\/\/\/\\/\/\/\/--
 
-local custommimguiStyle = new.bool()
-
 --MAIN
 function main() 
     while not isSampAvailable() do
@@ -472,7 +499,7 @@ function main()
         act = not act
     end)
 	sampRegisterChatCommand('mdemo',function ()
-        custommimguiStyle[0] = not custommimguiStyle[0]
+        widget[0] = not widget[0]
     end)
     lua_thread.create(carfunc)
 	sampRegisterChatCommand("ezhelper", function()
@@ -566,6 +593,12 @@ function main()
 		end
 	end)
 		
+
+	
+	if mainIni.onDay.today ~= os.date("%a") then 
+		mainIni.onDay.today = os.date("%a")
+		mainIni.onDay.online = 0
+	end
 ----------------------------------------------SpawnFix
 		if boolfixes.fixspawn[0] == true then
 			memory.fill(0x4217F4, 0x90, 21, true)
@@ -577,9 +610,11 @@ function main()
 
 		lua_thread.create(strobe)
 		lua_thread.create(famhide)
+		lua_thread.create(time)
 
     while true do
 		wait(0)
+
 --FISHEYE-----------------------------------------------------------
 		if features.fisheye[0] == true then
 			if isCurrentCharWeapon(PLAYER_PED, 34) and isKeyDown(VK_RBUTTON) or isCurrentCharWeapon(PLAYER_PED, 43) and isKeyDown(VK_RBUTTON) then
@@ -600,24 +635,25 @@ function main()
 		if BIND_START then
 			BIND_START = false
 			bindplay = true
-			ezMessage('Чтобы остановить отыгровку, нажмите {FFD700}END')
+			--ezMessage('Чтобы остановить отыгровку, нажмите {FFD700}END')
 			
 			if BIND_THREAD then	
 				BIND_THREAD:terminate()
 			end
 			
 			BIND_THREAD = lua_thread.create(function()
-				
 				for bp in BIND_ITEM.text:gmatch('[^~]+') do
 					if bindplay then
-						
 						sampProcessChatInput(tostring(bp))
 						wait(BIND_ITEM.delay * 1000)
-
 					end
-					
 				end
+				bindplay = false
 			end)
+		end
+
+		if bindplay then
+			renderFontDrawText(bigfont,'Чтобы остановить отыгровку, нажмите {FFD700}END',sizeX / 1.41, sizeY / 1.045,-1)	
 		end
 		--------------------------------
 		--------------------------------
@@ -663,6 +699,7 @@ function main()
 		end
 		--famhide
 		
+		
 
 
 ------------------------------------------------------------------------------------------------------
@@ -682,7 +719,6 @@ function main()
 		end
 
 		if carfuncs.autoscroll[0] == true then
-			_, pid = sampGetPlayerIdByCharHandle(playerPed)
 			anim = sampGetPlayerAnimationId(pid)	
 			weapon = getCurrentCharWeapon(playerPed)
 			
@@ -920,6 +956,103 @@ local thridFrame = imgui.OnFrame(
 end
 )
 
+local widgetFrame = imgui.OnFrame(
+	function() return widget[0] end,
+	function(w)
+		imgui.DisableInput = false
+		w.HideCursor = (pie_mode[0] and not imgui.IsMouseDown(2))
+
+		if not isPauseMenuActive() then
+			
+			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 5.4, 850), imgui.Cond.Always)
+			imgui.SetNextWindowSize(imgui.ImVec2(200, 120), imgui.Cond.Always)
+			imgui.Begin('  ', widget, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
+			imgui.PushFont(wfont)
+			imgui.CenterTextColoredRGB(nowTime)
+			imgui.PopFont()
+			imgui.SetCursorPosY(25)
+            imgui.CenterTextColoredRGB(getStrDate(os.time()))
+			imgui.Separator()
+			imgui.PushFont(smallfont)
+			imgui.SetCursorPos(imgui.ImVec2(12, 52.5))
+			imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_USER) imgui.SameLine(26)
+			imgui.TextColoredRGB(tostring(pid))
+			imgui.SetCursorPos(imgui.ImVec2(56, 52.5))
+			imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_WIFI) imgui.SameLine(72)
+			imgui.TextColoredRGB(tostring(ping))
+			imgui.SetCursorPos(imgui.ImVec2(102, 52.5))
+			imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_USERS) imgui.SameLine(120)
+			imgui.TextColoredRGB(tostring(servonl))
+			imgui.SetCursorPos(imgui.ImVec2(151, 52.5))
+			imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_IMAGES) imgui.SameLine(168)
+			imgui.TextColoredRGB(tostring(fps))
+			imgui.SetCursorPosY(75)
+			imgui.Separator()
+			if sampGetGamestate() ~= 3 then
+				imgui.CenterTextColoredRGB("Подключение: "..get_clock(connectingTime))
+			else
+				imgui.CenterTextColoredRGB("Сессия: "..get_clock(sesOnline[0]))
+				imgui.CenterTextColoredRGB("За день: "..get_clock(mainIni.onDay.online))
+			end
+			imgui.PopFont()
+			
+			if pie_mode[0] then
+				if imgui.IsMouseClicked(2) then imgui.OpenPopup('PieMenu') end
+					if pie.BeginPiePopup('PieMenu', 2) then
+					imgui.PushFont(piefont)
+					if pie.BeginPieMenu(fa.ICON_FA_CAR..u8'Транспорт') then
+						if pie.PieMenuItem(fa.ICON_FA_SNOWPLOW..u8'Домкрат') then
+							sampSendChat("/domkrat")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_BOLT..u8'Зарядить') then
+							sampSendChat("/chargecar")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_GAS_PUMP..u8'Заправить') then
+							sampSendChat("/fillcar")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_TOOLS..u8'Починить') then
+							sampSendChat("/repcar")
+						end
+						pie.EndPieMenu()
+					end
+					if pie.BeginPieMenu(fa.ICON_FA_TOOLBOX..u8'Предметы') then
+						if pie.PieMenuItem(fa.ICON_FA_TOOLS..u8'Аптечка') then
+							sampSendChat("/usemed")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_CANNABIS..u8'Наркотики') then
+							sampSendChat("/usedrugs 3")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_SHIELD_ALT..u8'Бронежилет') then
+							sampSendChat("/armour")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_WINE_BOTTLE..u8'Пиво') then
+							sampSendChat("/beer")
+						end
+						pie.EndPieMenu()
+					end
+					if pie.BeginPieMenu(fa.ICON_FA_STAR..u8'Аксессуары') then
+						if pie.PieMenuItem(fa.ICON_FA_GAMEPAD..u8'ПУ') then
+							sampSendChat("/rcveh")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_SNOWBOARDING..u8'Сёрф') then
+							sampSendChat("/surf")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_SNOWBOARDING..u8'Скейт') then
+							sampSendChat("/skate")
+						end
+						if pie.PieMenuItem(fa.ICON_FA_GLOBE..u8'Шар') then
+							sampSendChat("/balloon")
+						end
+						pie.EndPieMenu()
+					end
+					pie.EndPiePopup()
+					imgui.PopFont()
+				end
+			end
+		end
+	end
+)
+
 local secondFrame = imgui.OnFrame(
 	function() return hud[0] end,
 	function(huds)
@@ -928,24 +1061,24 @@ local secondFrame = imgui.OnFrame(
 		if wasKeyPressed(VK_Q) and isKeyDown(VK_LMENU) then
 			cursor = not cursor
 		end
-
 		huds.HideCursor = cursor
+
 		if boolhud.huds[0] == true then
 			if spawn == true then
 				invent = sampTextdrawIsExists(inv)
 			end		
 			
 			if not isPauseMenuActive() and invent == false then
-
-				imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 1.24, 0), imgui.Cond.Always)
+				
+				imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 1.24, 0), imgui.Cond.FirstUseEver)
 				imgui.SetNextWindowSize(imgui.ImVec2(400, 400), imgui.Cond.FirstUseEver)
 				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.0, 0.0, 0.0, 0.01))
 				imgui.Begin('', hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoMove)
 				imgui.PopStyleColor(1)
 				imgui.DisableInput = true
+
 					if spawn == true then
 						if boolhud.huds[0] == true then
-							_, pid = sampGetPlayerIdByCharHandle(playerPed)
 							hp = sampGetPlayerHealth(pid)
 							razn = hp - lasthp
 							if actv == true and boolhud.rhp[0] == true then
@@ -1006,20 +1139,27 @@ local updateFrame = imgui.OnFrame(
 	function(player)
 	if not isPauseMenuActive() then
 		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(258, 150), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowSize(imgui.ImVec2(270, 180), imgui.Cond.FirstUseEver)
         imgui.Begin("UpdateWindow", updatewindow, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
 		imgui.DisableInput = false
-		imgui.PushFont(smallfont)
+		imgui.PushFont(mainfont)
 		imgui.CenterTextColoredRGB('Обновление ezHelper!')
 		imgui.Separator()
 		imgui.PopFont()
-		imgui.CenterTextColoredRGB('Вышло новое обновление для ezHelper.')
-		imgui.CenterTextColoredRGB('Хотите ли вы обновить скрипт?')
+		imgui.PushFont(smallfont)
+		--imgui.CenterTextColoredRGB('Хотите ли вы обновить скрипт?')
+		imgui.PopFont()
+		imgui.BeginChild("##UpdateChild",imgui.ImVec2(260, 95), true)
+		imgui.PushFont(smallfont)
+		imgui.CenterTextColoredRGB('Что нового?')
+		imgui.WrappedTextRGB(u8'Встречайте, PieMenu!\n1. Изменил радус PieMenu.\n2. Добавил виджет, мелкие багфиксы.\n3. Изменил отображение текста об отмене отыгровки в биндере.\n4. Скругление фреймов mimgui')
+		imgui.PopFont()
+		imgui.EndChild()
 		imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.5, 0.5))
-		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6), 100))
+		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6 + 5), 130))
 		imgui.PushFont(mainfont)
 		if imgui.AnimatedButton(u8"Да", imgui.ImVec2(80, 35)) then updatewindow[0] = false update():download() end
-		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6) + 88, 100))
+		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6) + 88 + 5, 130))
 		if imgui.AnimatedButton(u8"Нет", imgui.ImVec2(80, 35)) then updatewindow[0] = false end
 		imgui.PopFont()
 		imgui.PopStyleVar()
@@ -1092,18 +1232,6 @@ local TimeWeatherFrame = imgui.OnFrame(
 		imgui.PopStyleVar(1)
 	end
 )
-mcount = 0
-imgui.OnFrame(function() return custommimguiStyle[0] end, function()
-    imgui.Begin("mimgui custom style")
-    if imgui.Button('Save from clipboard') then
-        math.randomseed(os.time())
-        if getClipboardText() then io.open(getWorkingDirectory()..'\\'..thisScript().name:gsub('.lua', '')..'-Custom_mimgui_Style-'..mcount..'['..math.random(1111111,999999999)..'].txt', 'w'):write(getClipboardText()):close() end
-        mcount = mcount + 1
-    end
-    imgui.Separator() imgui.Spacing() imgui.Spacing() imgui.Spacing()  imgui.Spacing() imgui.Separator()
-    imgui.ShowStyleEditor()
-    imgui.End()
-end)
 
 local newFrame = imgui.OnFrame(
 	function() return rwindow.alpha > 0.00 end, -- Указываем здесь данное условие, тем самым рендеря окно только в том случае, если его прозрачность больше нуля
@@ -2037,7 +2165,9 @@ local newFrame = imgui.OnFrame(
 				imgui.WrappedTextRGB(u8'26.08.2022 - 1.4.4 - фикс бага новых окон лаунчера от АРЗ, новые хоткеи\n'..
 				u8'08.09.2022 - 1.4.5 - фикс бага автозаправки, новая функция "АнтиТряска", убрал hphud, так как в нём нет необходимости.\n'..
 				u8'20.09.2022 - 1.4.7 - новые хоткеи, фикс багов.\n'..
-				u8'01.10.2022 - 1.4.8 - очередной фикс бага с автозаправкой электрокаров, изменил название команды /showdoor на /infoveh, фикс бага со шрифтом.')
+				u8'01.10.2022 - 1.4.8 - очередной фикс бага с автозаправкой электрокаров, изменил название команды /showdoor на /infoveh, фикс бага со шрифтом.\n'..
+				u8'02.10.2022 - 1.4.9 - встречайте, PieMenu! Изменил радус PieMenu. Добавил виджет, мелкие багфиксы. Изменил отображение текста об отмене отыгровки в биндере. Скругление фреймов mimgui\n'..
+				u8'03.10.2022 - 1.5.0 - Coming Soon...')
 				imgui.PopFont()
 				imgui.EndChild()
 				puX = imgui.GetWindowWidth()
@@ -2237,6 +2367,9 @@ function onScriptTerminate(script, quit)
 	gameClockk = 0
 	clock = 0
 	afk = 0
+	if script == thisScript() then 
+		if inicfg.save(mainIni, directIni) then sampfuncsLog('Ваш онлайн сохранён!') end
+	end
 end
 
 function playVolume(arg, state)
@@ -2251,7 +2384,6 @@ function sampev.onServerMessage(color, text)
 	if features.autoid[0] == true then
 		if text:find('Вы успешно начали погоню за игроком .') then
 			namePur = text:match('Вы успешно начали погоню за игроком (%w+_?%w+)')
-			print(namePur)
 		end
 		if text:find('Игрок ушел от погони! Последнее местоположение') then
 			pursuit = lua_thread.create(function()
@@ -2391,7 +2523,6 @@ function sampev.onDisplayGameText(style, time, text)
 end
 
 function sampev.onSetPlayerHealth(health)
-	_, pid = sampGetPlayerIdByCharHandle(playerPed)
 	lasthp = sampGetPlayerHealth(pid)
 	lua_thread.create(function()
 		while true do wait(0)
@@ -2524,6 +2655,45 @@ end
 
 function isCarLightsOn(car)
 	return readMemory(getCarPointer(car) + 0x428, 1) > 62
+end
+
+function time()
+	startTime = os.time()
+    connectingTime = 0
+    while true do
+        wait(1000)
+        nowTime = os.date("%H:%M:%S", os.time())
+		fps = ("%.0f"):format(memory.getfloat(0xB7CB50, true))
+		ping =  tostring(sampGetPlayerPing(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))))
+		if sampGetGamestate() == 3 then
+	        sesOnline[0] = sesOnline[0] + 1
+			mainIni.onDay.online = mainIni.onDay.online + 1
+			connectingTime = 0
+			_, pid = sampGetPlayerIdByCharHandle(playerPed)
+			servonl = tostring(sampGetPlayerCount())
+	    else
+			pid = 0
+			servonl = 1
+            connectingTime = connectingTime + 1
+	    	startTime = startTime + 1
+	    end
+
+    end
+end
+
+function get_clock(time)
+    local timezone_offset = 86400 - os.date('%H', 0) * 3600
+    if tonumber(time) >= 86400 then onDay = true else onDay = false end
+    return os.date((onDay and math.floor(time / 86400)..'д ' or '')..'%H:%M:%S', time + timezone_offset)
+end
+
+function getStrDate(unixTime)
+    local tMonths = {'января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'}
+	local tWeekdays = {[0] = 'Воскресенье', [1] = 'Понедельник', [2] = 'Вторник', [3] = 'Среда', [4] = 'Четверг', [5] = 'Пятница', [6] = 'Суббота'}
+    local day = tonumber(os.date('%d', unixTime))
+    local month = tMonths[tonumber(os.date('%m', unixTime))]
+    local weekday = tWeekdays[tonumber(os.date('%w', unixTime))]
+    return string.format('%s, %s %s', weekday, day, month)
 end
 
 function carfunc()
