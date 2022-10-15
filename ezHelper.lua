@@ -1061,9 +1061,15 @@ local hudFrame = imgui.OnFrame(
 			if features.mac[0] then
 				bass.BASS_ChannelStop(mac)
 			end
-
-			local invent = sampTextdrawIsExists(inv)
-			if not isPauseMenuActive() and sampGetGamestate() == 3 and invent == false and sampGetChatDisplayMode() ~= 0 then
+			
+			local textinv = sampTextdrawGetString(inv)
+			print(textinv)
+			if textinv == "ÖHãEHèAPí" or textinv == "INVENTORY" then
+				oiv = true
+			else
+				oiv = false 
+			end
+			if not isPauseMenuActive() and sampGetGamestate() == 3 and oiv == false and sampGetChatDisplayMode() ~= 0 then
 				local DL = imgui.GetBackgroundDrawList()
 
 				local radius = 17
