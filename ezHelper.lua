@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.5.0")
+script_version("1.5.1")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -87,7 +87,8 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 20.09.2022 - 1.4.7 - Новые ХотКеи, фикс различных багов.
 01.10.2022 - 1.4.8 - Очередной фикс бага с автозаправкой электромашин, изменил команду /showdoor на /infoveh, фикс бага со шрифтом.
 03.10.2022 - 1.4.9 - Встречайте, PieMenu! Изменил радус PieMenu. Добавил виджет, мелкие багфиксы. Изменил отображение текста об отмене отыгровки в биндере. Скругление фреймов мимгуи.
-15.10.2022 - 1.5.0 - Переписал код скрипта. Обновил дизайн скрипта, убрал функцию HUD+, добавил виджет онлайна, новый худ. Добавил функцию CorrectDMG. Обновил окно обновления скрипта. Новая команда /сall [ID]. Новая функция Music After Connected [MAC]. Сделал автозагрузку файлов скрипта.]]
+15.10.2022 - 1.5.0 - Переписал код скрипта. Обновил дизайн скрипта, убрал функцию HUD+, добавил виджет онлайна, новый худ. Добавил функцию CorrectDMG. Обновил окно обновления скрипта. Новая команда /сall [ID]. Новая функция Music After Connected [MAC]. Сделал автозагрузку файлов скрипта.
+21.10.2022 - 1.5.1 - Мелкие багфиксы.]]
 
 	-----===[[INIFILE]]===-----
 if not doesDirectoryExist('moonloader/config/ezHelper') then
@@ -1063,7 +1064,6 @@ local hudFrame = imgui.OnFrame(
 			end
 			
 			local textinv = sampTextdrawGetString(inv)
-			print(textinv)
 			if textinv == "…H‹EHЏAP’" or textinv == "INVENTORY" then
 				oiv = true
 			else
@@ -2073,7 +2073,7 @@ local newFrame = imgui.OnFrame(
 						inicfg.save(mainIni, directIni)
 					end
 					imgui.ezHint('{FF0000}[NEW]{FFFFFF} MAC - Music After Connected.\n'..
-					'Включает старую музыку, после подключения к серверву.',
+					'Включает старую музыку, после подключения к серверу.',
 					hpfont, mainfont, 120.000000, 46.000000)
 
 					imgui.SetCursorPos(imgui.ImVec2(136.000000,70.000000));
@@ -2913,7 +2913,6 @@ end
 
 function sampev.onSendGiveDamage(playerId, damage, weapon, bodypart)
 	if features.kolokol[0] then
-		print(damage)
 		local audio = loadAudioStream('moonloader/resource/ezHelper/bang.mp3')
 		setAudioStreamState(audio, 1)
 		setAudioStreamVolume(audio, slider.kolvolume[0])
