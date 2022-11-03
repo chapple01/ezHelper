@@ -88,7 +88,8 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 01.10.2022 - 1.4.8 - Очередной фикс бага с автозаправкой электромашин, изменил команду /showdoor на /infoveh, фикс бага со шрифтом.
 03.10.2022 - 1.4.9 - Встречайте, PieMenu! Изменил радус PieMenu. Добавил виджет, мелкие багфиксы. Изменил отображение текста об отмене отыгровки в биндере. Скругление фреймов мимгуи.
 15.10.2022 - 1.5.0 - Переписал код скрипта. Обновил дизайн скрипта, убрал функцию HUD+, добавил виджет онлайна, новый худ. Добавил функцию CorrectDMG. Обновил окно обновления скрипта. Новая команда /сall [ID]. Новая функция Music After Connected [MAC]. Сделал автозагрузку файлов скрипта.
-21.10.2022 - 1.5.1 - Мелкие багфиксы.]]
+21.10.2022 - 1.5.1 - Мелкие багфиксы.
+03.11.2022 - 1.5.2 - Апдейт из больницы. 7 нобяря, у меня должна быть операция. Обновил RHUD. Исправил баги с RHUD. Теперь если он выключен, то больше не включится. Добавил проверку на лаунчер (пока что не автоматическая).]]
 
 	-----===[[INIFILE]]===-----
 if not doesDirectoryExist('moonloader/config/ezHelper') then
@@ -102,7 +103,8 @@ local mainIni = inicfg.load({
 		fixgps = false,
 		fixspawn = false,
 		fixvint = false,
-		fixarzdialogs = false
+		fixarzdialogs = false,
+		launcher = true,
 	},
 	fpsup =	{hidefam = false},
 	features =
@@ -141,6 +143,7 @@ local mainIni = inicfg.load({
 	{
 		hud = false,
 		maxhp = 100,
+		lid = 1,
 		adrunk = true,
 		hun = 0
 	},
@@ -168,8 +171,15 @@ local panic = getGameDirectory().."\\moonloader\\resource\\ezHelper\\panic.mp3"
 local notification = getGameDirectory().."\\moonloader\\resource\\ezHelper\\notification.mp3"
 
 	-----===[[IMAGES]]===-----
-local logo1 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\arz07.png')
-local logo2 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\arplogo.png')
+local slogo = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\arz07.png')
+
+local logo1 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\common1.png')
+local logo2 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\common2.png')
+local logo3 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\Halloween.png')
+local logo4 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\HiTech.png')
+local logo = {logo1, logo2, logo3, logo4} 
+
+local xPD = renderLoadTextureFromFile(getWorkingDirectory() .. "\\resource\\ezHelper\\XPayDay.png")
 
 	-----===[[FONTS]]===-----
 local font = renderCreateFont('segmdl2', 10, 5)
@@ -232,6 +242,7 @@ local boolfixes = {
 	fixspawn = new.bool(mainIni.fixes.fixspawn),
 	fixvint = new.bool(mainIni.fixes.fixvint),
 	fixarzdialogs = new.bool(mainIni.fixes.fixarzdialogs),
+	launcher = new.bool(mainIni.fixes.launcher),
 }
 
 local binder = {
@@ -242,12 +253,15 @@ local binder = {
 
 local boolhud = {
 	hud = new.bool(mainIni.hud.hud),
+	show = new.bool(true),
 	maxhp = new.int(mainIni.hud.maxhp),
+	lid = new.int(mainIni.hud.lid),
 	adrunk = new.bool(mainIni.hud.adrunk)
 }
 
 local boolwidget = {
 	widget = new.bool(widgetcfg.widget.active),
+	show = new.bool(true),
 	info = new.bool(widgetcfg.widget.info),
 	online = new.bool(widgetcfg.widget.online),
 	color = new.float[4](widgetcfg.widget.color),
@@ -514,7 +528,6 @@ imgui.OnInitialize(function()
 	apply_custom_style()
 
 	local dirImages = getWorkingDirectory() .. "\\resource\\ezHelper\\WeaponsIcon"
-
 	weapons = {}
 	for i = 0, 46 do
 		local path = string.format("%s\\%s.png", dirImages, i)
@@ -556,6 +569,8 @@ imgui.OnInitialize(function()
 	hudfont5 = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/ezHelper/fonts/PFDinDisplayPro-Regular.ttf', 18.0, nil, glyph_ranges) --18
 	hudfont6 = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/ezHelper/fonts/GothamProNarrow-Bold.ttf', 13.0, nil, glyph_ranges) --16
 		icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 16.0, config, iconRanges)
+	hudfont7 = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/ezHelper/fonts/UniNeueHeavy.ttf', 19.0, nil, glyph_ranges) --24
+
 
 	imgui.GetIO().IniFilename = nil
 end)
@@ -757,20 +772,20 @@ function main()
 		end
 
 		-----===[[CARTWEAKS]]===-----
-		if isKeyJustPressed(VK_L) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			sampSendChat("/lock")
-		end			
+		if not boolfixes.launcher[0] then
+			if isKeyJustPressed(VK_L) and not sampIsChatInputActive() and not sampIsDialogActive() then
+				sampSendChat("/lock")
+			end	
+			if isKeyJustPressed(VK_K) and not sampIsChatInputActive() and not sampIsDialogActive() then
+				sampSendChat("/key")
+			end
+		end
         if isKeyJustPressed(VK_O) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/olock")	
 		end
         if isKeyJustPressed(VK_J) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/jlock")
 		end
-        if isKeyJustPressed(VK_K) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			sampSendChat("/key")
-		end
-
-
 
 		-----===[[OTHER]]===-----
 		if isKeyJustPressed(VK_BACK) and not sampIsChatInputActive() and not sampIsDialogActive() then
@@ -791,27 +806,49 @@ function fixes_func()
 	if boolfixes.fixarzdialogs[0] then
 		if isKeyJustPressed(VK_B) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			fixnewarzframes = true
-			boolhud.hud[0] = false
-			boolwidget.widget[0] = false
+			if boolwidget.show[0] and boolwidget.widget[0] then
+				boolwidget.show[0] = false
+			end
+			if boolhud.show[0] and boolhud.hud[0] then
+				boolhud.show[0] = false
+			end
 		elseif isKeyJustPressed(VK_U) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			boolhud.hud[0] = false
-			boolwidget.widget[0] = false
-		elseif isKeyJustPressed(VK_ESCAPE) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			fixnewarzframes = false
-			boolhud.hud[0] = true
-			boolwidget.widget[0] = true
+			if boolwidget.show[0] and boolwidget.widget[0] then
+				boolwidget.show[0] = false
+			end
+			if boolhud.show[0] and boolhud.hud[0] then
+				boolhud.show[0] = false
+			end
 		end
 		if isKeyDown(VK_F5) then
 			printStringNow("Fix ARZ_Windows: ~b~~g~ACTIVATE", 10)
-			boolwidget.widget[0] = false
-			boolhud.hud[0] = false
+			if boolwidget.show[0] and boolwidget.widget[0] then
+				boolwidget.show[0] = false
+			end
+			if boolhud.show[0] and boolhud.hud[0] then
+				boolhud.show[0] = false
+			end
 		elseif wasKeyReleased(VK_F5) then
-			boolwidget.widget[0] = true
-			boolhud.hud[0] = true
+			if not boolwidget.show[0] and boolwidget.widget[0] then
+				boolwidget.show[0] = true
+			end
+			if not boolhud.show[0] and boolhud.hud[0] then
+				boolhud.show[0] = true
+			end
 		end
 		
 		if fixnewarzframes == true then
 			printStringNow("Fix ARZ_Windows: ~b~~g~ACTIVATE", 10)
+		end
+	end
+
+	if isKeyJustPressed(VK_ESCAPE) and not sampIsChatInputActive() and not sampIsDialogActive() then
+		fixnewarzframes = false
+		if not boolwidget.show[0] and boolwidget.widget[0] then
+			boolwidget.show[0] = true
+		end
+		if not boolhud.show[0] and boolhud.hud[0] then
+			boolhud.show[0] = true
 		end
 	end
 
@@ -1053,7 +1090,7 @@ function hotkeyactivate()
 end
 
 local hudFrame = imgui.OnFrame(
-	function() return boolhud.hud[0] end,
+	function() return boolhud.show[0] and boolhud.hud[0] end,
 	function(h)
 		imgui.DisableInput = false
 		h.HideCursor = true
@@ -1083,11 +1120,21 @@ local hudFrame = imgui.OnFrame(
 				imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 1.28, sizeY * 0.01 / 100), imgui.Cond.Always)
 				imgui.SetNextWindowSize(imgui.ImVec2(420, 290), imgui.Cond.Always)
 				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.2, 0.2, 0.2, 0))
-				imgui.Begin('##1', boolhud.hud, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
-				renderDrawTexture(logo1, sizeX / 1.069, 17, 125, 54, 0, 0xFFFFFFFF)
-				renderDrawTexture(logo2, sizeX / 1.1745, 16, 50, 50, 0, 0xFFFFFFFF)
+				imgui.Begin('##1', boolhud.show, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
+				renderDrawTexture(slogo, sizeX / 1.069, 17, 125, 54, 0, 0xFFFFFFFF)
+				renderDrawTexture(logo[boolhud.lid[0]], sizeX / 1.1745, 16, 50, 50, 0, 0xFFFFFFFF)
+				local servername = sampGetCurrentServerName()
+				local xpdint = servername:match("%d")
+				if xpdint ~= nil then
+					renderDrawTexture(xPD, sizeX / 1.29, 27, 31, 30, 0, 0xFFFFFFFF)
+					imgui.PushFont(hudfont7)
+					--print(xpdint)
+					DL:AddText(imgui.ImVec2(sizeX / 1.28685, 34), 0xFFFFFFFF, "X"..xpdint)
+					imgui.PopFont()
+				end
 				DL:AddCircleFilled(imgui.ImVec2(sizeX / 1.048, 44), radius - 4, Convert(0x788b94), polygons)
 				imgui.PushFont(hudfont5)
+				local size = imgui.ImVec2((radius * 5.3) - 10, (radius * 5.5) - 10)
 				DL:AddText(imgui.ImVec2(sizeX / 1.05, 36.0), 0xFFFFFFFF, "7")
 				DL:AddText(imgui.ImVec2(sizeX / 1.038, 36.0), 0xFFFFFFFF, "Mesa")
 				DL:AddText(imgui.ImVec2(sizeX / 1.1295, 51.0), 0xFF000000, "Role Play")
@@ -1338,7 +1385,7 @@ function imgui.CustomAnimProgressBar(label, int, func, duration, tPosX, tPosY, s
 end
 
 local widgetFrame = imgui.OnFrame(
-	function() return boolwidget.widget[0] end,
+	function() return boolwidget.show[0] and boolwidget.widget[0] end,
 	function(w)
 		imgui.DisableInput = false
 		w.HideCursor = (piebool.piemenu[0] and not imgui.IsMouseDown(2))
@@ -1347,7 +1394,7 @@ local widgetFrame = imgui.OnFrame(
 			imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(boolwidget.color[0], boolwidget.color[1], boolwidget.color[2],  boolwidget.color[3]))
 			imgui.SetNextWindowPos(imgui.ImVec2(boolwidget.posX, boolwidget.posY), imgui.Cond.Always)
 			imgui.SetNextWindowSize(imgui.ImVec2(200, -1), imgui.Cond.Always)
-			imgui.Begin('  ', boolwidget.widget, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
+			imgui.Begin('  ', boolwidget.show, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
 			imgui.PushFont(wfont)
 			imgui.CenterTextColoredRGB(nowTime)
 			imgui.PopFont()
@@ -1705,7 +1752,7 @@ local newFrame = imgui.OnFrame(
 
 					imgui.SetCursorPos(imgui.ImVec2(30.000000,95.000000));
 					if imgui.Checkbox(u8"Widget", boolwidget.widget) then
-						widgetcfg.widget.active =  boolwidget.widget[0]
+						widgetcfg.widget.active = boolwidget.widget[0]
 						ecfg.save(wgname, widgetcfg)
 					end
 					
@@ -2018,20 +2065,41 @@ local newFrame = imgui.OnFrame(
 						end
 						if imgui.BeginPopup('hudsettings', false, imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize) then
 							imgui.CenterTextColoredRGB("Ваше максимальное ХП:")
+							if imgui.RadioButtonIntPtr(u8'Common', boolhud.lid,1) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'White', boolhud.lid,2) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'Halloween', boolhud.lid,3) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+						 	end
+							 imgui.SameLine()
+							 if imgui.RadioButtonIntPtr(u8'HiTech', boolhud.lid,4) then
+								 mainIni.hud.lid = boolhud.lid[0]
+								 inicfg.save(mainIni, directIni)
+							  end
+							imgui.Separator()
+							imgui.CenterTextColoredRGB("Ваше максимальное ХП:")
 							if imgui.RadioButtonIntPtr(u8'100 HP', boolhud.maxhp,100) then
 								mainIni.hud.maxhp = boolhud.maxhp[0]
 								inicfg.save(mainIni, directIni)
-							 end
-							 imgui.SameLine()
-							 if imgui.RadioButtonIntPtr(u8'130 HP', boolhud.maxhp,130) then
+							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'130 HP', boolhud.maxhp,130) then
 								mainIni.hud.maxhp = boolhud.maxhp[0]
 								inicfg.save(mainIni, directIni)
-							 end
-							 imgui.SameLine()
-							 if imgui.RadioButtonIntPtr(u8'160 HP', boolhud.maxhp,160) then
+							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'160 HP', boolhud.maxhp,160) then
 								mainIni.hud.maxhp = boolhud.maxhp[0]
 								inicfg.save(mainIni, directIni)
-							 end
+						 	end
 							imgui.EndPopup()
 						end
 					end
@@ -2227,8 +2295,14 @@ local newFrame = imgui.OnFrame(
 						mainIni.fixes.fixarzdialogs = boolfixes.fixarzdialogs[0]
 						inicfg.save(mainIni, directIni)
 					end
+					imgui.SetCursorPos(imgui.ImVec2(30.000000,95.000000));
+					if imgui.Checkbox(u8"Launcher", boolfixes.launcher) then
+						mainIni.fixes.launcher = boolfixes.launcher[0]
+						inicfg.save(mainIni, directIni)
+					end
+					
 
-					imgui.ezHint('Позволяет открывать двери моментально.\n'..
+					imgui.ezHint('{FFFFFF}Позволяет открывать двери моментально.\n'..
 					'{808080}Активация: {DCDCDC}H',
 					hpfont, mainfont, 14.000000, 21.000000)
 
@@ -2236,9 +2310,13 @@ local newFrame = imgui.OnFrame(
 					'{808080}Для применения, нужно перезайти.',
 					hpfont, mainfont, 14.000000, 46.000000)
 
-					imgui.ezHint('{FF0000}[NEW]{FFFFFF} Исправляет баг с новыми окнами от лаунчера Аризоны РП.\n'..
-					'{808080}Небо заменялось на окно баттлпаса/доната, F5.',
+					imgui.ezHint('{FFFFFF}Исправляет баг с новыми окнами от лаунчера Аризоны РП.\n'..
+					'{808080}Небо заменялось на окно ArizonaPASS/Donate, F5.',
 					hpfont, mainfont, 14.000000, 71.000000)
+
+					imgui.ezHint('{FF0000}[NEW]{FFFFFF} Исправляет баг с новыми хоткеями от Аризоны.\n'..
+					'{808080}Активация: {DCDCDC}Автоматическая',
+					hpfont, mainfont, 14.000000, 96.000000)
 					
 				imgui.EndChild()			
 			end
@@ -3033,8 +3111,12 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
     end
 	if id == 222 then
     	fixnewarzframes = true
-		boolhud.hud[0] = false
-		boolwidget.widget[0] = false
+		if boolwidget.show[0] and boolwidget.widget[0] then
+			boolwidget.show[0] = false
+		end
+		if boolhud.show[0] and boolhud.hud[0] then
+			boolhud.show[0] = false
+		end
 	end
 end
 
@@ -3225,6 +3307,7 @@ end
 
 function files_add()
 	if not doesDirectoryExist("moonloader/resource/ezHelper/WeaponsIcon") then createDirectory('moonloader/resource/ezHelper/WeaponsIcon') end
+	if not doesDirectoryExist("moonloader/resource/ezHelper/logo") then createDirectory('moonloader/resource/ezHelper/logo') end
 	if not doesDirectoryExist("moonloader/resource/ezHelper/fonts") then createDirectory('moonloader/resource/ezHelper/fonts') end
 	if not doesDirectoryExist("moonloader/resource/fonts") then createDirectory('moonloader/resource/fonts') end
 	if not doesFileExist('moonloader\\resource\\ezHelper\\panic.mp3') then
@@ -3264,11 +3347,17 @@ function files_add()
 		end)
 
 	end
-	if not doesFileExist('moonloader\\resource\\ezHelper\\arz07.png') then
+	if not doesFileExist('moonloader\\resource\\ezHelper\\arz07.png') or not doesFileExist('moonloader\\resource\\ezHelper\\XPayDay.png') then
 		ezMessage("Загрузка картинок худа...")
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/arz07.png", getWorkingDirectory().."/resource/ezHelper/arz07.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/arplogo.png", getWorkingDirectory().."/resource/ezHelper/arplogo.png", function(id, status, p1, p2) end)
-
+		
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/common1.png", getWorkingDirectory().."/resource/ezHelper/logo/common1.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/common2.png", getWorkingDirectory().."/resource/ezHelper/logo/common2.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/Halloween.png", getWorkingDirectory().."/resource/ezHelper/logo/Halloween.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/HiTech.png", getWorkingDirectory().."/resource/ezHelper/logo/HiTech.png", function(id, status, p1, p2) end)
+		
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/XPayDay.png", getWorkingDirectory().."/resource/ezHelper/XPayDay.png", function(id, status, p1, p2) end)
+		
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/0.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/0.png", function(id, status, p1, p2) end)
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/1.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/1.png", function(id, status, p1, p2) end)
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/2.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/2.png", function(id, status, p1, p2) end)
