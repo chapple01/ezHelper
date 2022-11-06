@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.5.2")
+script_version("1.5.3")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -22,6 +22,7 @@ local pie = require 'mimgui_piemenu'
 local requests = require 'requests'
 local wm = require 'lib.windows.message'
 local addons = require "ADDONS"
+local hook = require("hooks")
 
 	-----===[[VARIABLES]]===-----
 		-----==[[INT]]==-----
@@ -32,6 +33,7 @@ local gameClockk = 0
 local afk = 0
 local afks = 0
 local countdialog = 0
+local connectingcount = 0
 local fps = 0
 local ping = 0
 local servonl = 0
@@ -89,7 +91,8 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 03.10.2022 - 1.4.9 - Встречайте, PieMenu! Изменил радус PieMenu. Добавил виджет, мелкие багфиксы. Изменил отображение текста об отмене отыгровки в биндере. Скругление фреймов мимгуи.
 15.10.2022 - 1.5.0 - Переписал код скрипта. Обновил дизайн скрипта, убрал функцию HUD+, добавил виджет онлайна, новый худ. Добавил функцию CorrectDMG. Обновил окно обновления скрипта. Новая команда /сall [ID]. Новая функция Music After Connected [MAC]. Сделал автозагрузку файлов скрипта.
 21.10.2022 - 1.5.1 - Мелкие багфиксы.
-03.11.2022 - 1.5.2 - Апдейт из больницы. Обновил RHUD. Исправил баги с RHUD. Добавил проверку на лаунчер (пока что не автоматическая).]]
+03.11.2022 - 1.5.2 - {FF69B4}[Update From The Hospital]{ffffff} Обновил RHUD. Исправил баги с RHUD. Добавил проверку на лаунчер (checkbox).
+06.11.2022 - 1.5.3 - {FF69B4}[Update From The Hospital]{ffffff} Добавил отображение количества попыток подключений к серверу.]]
 
 	-----===[[INIFILE]]===-----
 if not doesDirectoryExist('moonloader/config/ezHelper') then
@@ -578,11 +581,12 @@ end)
 local hun = 0
 
 --MAIN
-function main() 
+function main()
+    sampChatHook = hook.jmp.new("void(__thiscall *)(uintptr_t this, uint32_t type, const char* text, const char* prefix, uint32_t color, uint32_t pcolor)", sampChatHook, getModuleHandle('samp.dll') + 0x67460)
     while not isSampAvailable() do
         wait(100)
     end
-	applySampfuncsPatch()
+    applySampfuncsPatch()
 	lua_thread.create(time)
 	mac = bass.BASS_StreamCreateFile(false, "moonloader\\resource\\ezHelper\\oldarzmusic.mp3", 0, 0, 0)
 	lua_thread.create(function()
@@ -800,6 +804,19 @@ function main()
 		autoscroll_func()
 		afkcontrol_func()
     end
+end
+
+function sampChatHook(this, type, text, prefix, color, pcolor)
+    local text = ffi.string(text)
+    if text:find('^Сервер полон%. Повторяем подключение%.%.%.') then
+        connectingcount = connectingcount + 1
+        return sampChatHook(this, type, ffi.cast('char*', ffi.string(text)..' (x'..tostring(connectingcount)..')'), prefix, color, pcolor)
+    elseif text:find('^Успешный вход%. Приятной игры на сервере .+') then
+        sampChatHook(this, type, ffi.cast('char*', ffi.string('Успешный вход (Попыток: '..tostring(connectingcount)..') Приятной игры на сервере :)')), prefix, color, pcolor)
+        connectingcount = 0
+        return
+    end
+    sampChatHook(this, type, text, prefix, color, pcolor)
 end
 
 function fixes_func()
@@ -2816,7 +2833,7 @@ function playVolume(arg, state)
 	if doesFileExist(arg) then
 		local audio = loadAudioStream(arg)
 		setAudioStreamState(audio, state)
-		setAudioStreamVolume(audio, slider.kolokol[0])
+		setAudioStreamVolume(audio, slider.kolvolume[0])
 	end
 end
 function sampev.onServerMessage(color, text)
