@@ -2927,7 +2927,6 @@ function sampev.onServerMessage(color, text)
 		end
 		
 		if text:find('%[ѕогон€%] %{......%}»грок ушел от погони! ѕоследнее местоположение') then
-			print("1111")
 			local pursuitoff = false
 			local pursuit = lua_thread.create(function()
 				wait(800)
@@ -3011,7 +3010,7 @@ function sampev.onShowTextDraw(id, data)
 		data.text = "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~r~ LOCK"
 		return {id, data}
 	end
-	print(data.text)
+	--print(data.text)
 	if data.text == "ЕHЛEHПAPТ" or data.text == "INVENTORY" then
 		inv = id
 	end
@@ -3035,8 +3034,8 @@ function sampev.onShowTextDraw(id, data)
 	if carfuncs.autofill[0] == true then
 		--print("ID: "..id)
 		--print("DATA: "..data.text)	
-		print("POS_X: "..data.position.x)
-		print("POS_Y: "..data.position.y)
+		--print("POS_X: "..data.position.x)
+		--print("POS_Y: "..data.position.y)
 		if fillcar == true then
 			atfll = lua_thread.create_suspended(function()
 				if data.text:find("~w~This type of fuel ~r~ is not suitable~w~~n~ for your vehicles!") then
