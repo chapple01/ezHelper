@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.5.3")
+script_version("1.5.4")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -91,7 +91,9 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 15.10.2022 - 1.5.0 - Переписал код скрипта. Обновил дизайн скрипта, убрал функцию HUD+, добавил виджет онлайна, новый худ. Добавил функцию CorrectDMG. Обновил окно обновления скрипта. Новая команда /сall [ID]. Новая функция Music After Connected [MAC]. Сделал автозагрузку файлов скрипта.
 21.10.2022 - 1.5.1 - Мелкие багфиксы.
 03.11.2022 - 1.5.2 - {FF69B4}[Update From The Hospital]{ffffff} Обновил RHUD. Исправил баги с RHUD. Добавил проверку на лаунчер (checkbox).
-06.11.2022 - 1.5.3 - {FF69B4}[Update From The Hospital]{ffffff} Добавил отображение количества попыток подключений к серверу.]]
+06.11.2022 - 1.5.3 - {FF69B4}[Update From The Hospital]{ffffff} Добавил отображение количества попыток подключений к серверу.
+25.11.2022 - 1.5.4 - Оптимизировал функцию отображение количества попыток подключений к серверу. Исправил функцию AutoID. Исправил мелкие баги с RHUD, добавил мерцание иконки, когда вы голодаете. Восстановил работу функций "Autofill", AutoTT", "RGPS", "Correct DMG" - спасибо Аризоне, одной говнообновой убили двух зайцев: 1) Неработающие скрипты 2) Огромные текста на экране.
+]]
 
 	-----===[[INIFILE]]===-----
 if not doesDirectoryExist('moonloader/config/ezHelper') then
@@ -173,15 +175,6 @@ local panic = getGameDirectory().."\\moonloader\\resource\\ezHelper\\panic.mp3"
 local notification = getGameDirectory().."\\moonloader\\resource\\ezHelper\\notification.mp3"
 
 	-----===[[IMAGES]]===-----
-local slogo = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\arz07.png')
-
-local logo1 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\common1.png')
-local logo2 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\common2.png')
-local logo3 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\Halloween.png')
-local logo4 = renderLoadTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\HiTech.png')
-local logo = {logo1, logo2, logo3, logo4} 
-
-local xPD = renderLoadTextureFromFile(getWorkingDirectory() .. "\\resource\\ezHelper\\XPayDay.png")
 
 	-----===[[FONTS]]===-----
 local font = renderCreateFont('segmdl2', 10, 5)
@@ -198,33 +191,28 @@ local widgetcfg = {
 		},
 		color = {0, 0, 0, 1},
 	},
-	piemenu = {
-		active = true,
-		car = {
-			fill = true,
-			charge = true,
-			repcar = true,
-			domkrat = true,
-		},
-		item = {
-			healmed = true,
-			narko = true,
-			armor = true,
-			beer = true,
-			mask = true,
-		},
-		acs = {
-			rcveh = true,
-			skate = true,
-			surf = true,
-			shar = true,
-		},
-		RP = {
-			bodycam = false,
-		},
-	},
-}
+	piemenu_active = true,
 
+	piemenu_car_fill = true,
+	piemenu_car_charge = true,
+	piemenu_car_repcar = true,
+	piemenu_car_domkrat = true,
+
+	piemenu_item_healmed = true,
+	piemenu_item_narko = true,
+	piemenu_item_armor = true,
+	piemenu_item_beer = true,
+	piemenu_item_mask = true,
+
+	piemenu_acs_rcveh = true,
+	piemenu_acs_skate = true,
+	piemenu_acs_surf = true,
+	piemenu_acs_shar = true,
+	piemenu_acs_deltap = true,
+	
+	piemenu_rp_bodycam = true,
+
+}
 wgname = getGameDirectory()..'\\moonloader\\config\\ezHelper\\widget.cfg'
 ecfg.update(widgetcfg, wgname)
 ecfg.save(wgname, widgetcfg)
@@ -272,23 +260,24 @@ local boolwidget = {
 }
 
 local piebool = {
-	piemenu = new.bool(widgetcfg.piemenu.active),
+	piemenu = new.bool(widgetcfg.piemenu_active),
 
-	fillcar = new.bool(widgetcfg.piemenu.car.fill),
-	chargecar = new.bool(widgetcfg.piemenu.car.charge),
-	repcar = new.bool(widgetcfg.piemenu.car.repcar),
-	domkrat = new.bool(widgetcfg.piemenu.car.domkrat),
+	fillcar = new.bool(widgetcfg.piemenu_car_fill),
+	chargecar = new.bool(widgetcfg.piemenu_car_charge),
+	repcar = new.bool(widgetcfg.piemenu_car_repcar),
+	domkrat = new.bool(widgetcfg.piemenu_car_domkrat),
 
-	healmed = new.bool(widgetcfg.piemenu.item.healmed),
-	narko = new.bool(widgetcfg.piemenu.item.narko),
-	armor = new.bool(widgetcfg.piemenu.item.armor),
-	beer = new.bool(widgetcfg.piemenu.item.beer),
-	mask = new.bool(widgetcfg.piemenu.item.mask),
+	healmed = new.bool(widgetcfg.piemenu_item_healmed),
+	narko = new.bool(widgetcfg.piemenu_item_narko),
+	armor = new.bool(widgetcfg.piemenu_item_armor),
+	beer = new.bool(widgetcfg.piemenu_item_beer),
+	mask = new.bool(widgetcfg.piemenu_item_mask),
 
-	rcveh = new.bool(widgetcfg.piemenu.acs.rcveh),
-	skate = new.bool(widgetcfg.piemenu.acs.skate),
-	surf = new.bool(widgetcfg.piemenu.acs.surf),
-	shar = new.bool(widgetcfg.piemenu.acs.shar)
+	rcveh = new.bool(widgetcfg.piemenu_acs_rcveh),
+	skate = new.bool(widgetcfg.piemenu_acs_skate),
+	surf = new.bool(widgetcfg.piemenu_acs_surf),
+	shar = new.bool(widgetcfg.piemenu_acs_shar),
+	deltap = new.bool(widgetcfg.piemenu_acs_deltap)
 }
 
 local features = {
@@ -394,7 +383,7 @@ local hcfg = {
 	openscript = {}, antifreeze = {},  --OTHER
 	narko = {}, aidkit = {}, armor = {}, beer = {}, --ITEMS
 	fllcar = {}, repcar = {}, hkstrobe = {}, domkrat = {}, --CARS
-	rcveh = {},	surf = {}, skate = {}, shar = {} --ACS
+	rcveh = {},	surf = {}, skate = {}, shar = {}, deltap = {} --ACS
 }
 
 hkname = getGameDirectory()..'\\moonloader\\config\\ezHelper\\hotkeys.cfg'
@@ -423,12 +412,12 @@ bhotkey.v = {}
 local openscript, antifreeze = {}, {}
 local aidkit, narko, armor, beer = {}, {}, {}, {}
 local fllcar, repcar, hkstrobe, domkrat = {}, {}, {}, {}
-local rcveh, surf, skate, shar = {}, {}, {}, {}
+local rcveh, surf, skate, shar, deltap = {}, {}, {}, {}, {}
 
 openscript.v, antifreeze.v = hcfg.openscript, hcfg.antifreeze
 aidkit.v, narko.v, armor.v, beer.v = hcfg.aidkit, hcfg.narko, hcfg.armor, hcfg.beer
 fllcar.v, repcar.v, hkstrobe.v, domkrat.v = hcfg.fllcar, hcfg.repcar, hcfg.hkstrobe, hcfg.domkrat
-rcveh.v, surf.v, skate.v, shar.v = hcfg.rcveh, hcfg.surf, hcfg.skate, hcfg.shar
+rcveh.v, surf.v, skate.v, shar.v, deltap.v = hcfg.rcveh, hcfg.surf, hcfg.skate, hcfg.shar, hcfg.deltap
 
 local rwindow = { state = false, duration = 0.5 }	--Основное окно
 setmetatable(rwindow, ui_meta)
@@ -438,6 +427,9 @@ setmetatable(TWWindow, ui_meta)
 
 local popupwindow = { state = false, duration = 0.4 } --Попуп окно
 setmetatable(popupwindow, ui_meta)
+
+local colorhunger = { state = false, duration = 0.2 } --Голод
+setmetatable(colorhunger, ui_meta)
 
 --==[[\/\/\/\/\/\/\/\/\\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\]]==--
 ------------------------KEYSNAMES------------------------
@@ -537,6 +529,15 @@ imgui.OnInitialize(function()
 			weapons[i] = imgui.CreateTextureFromFile(path)
 		end
 	end
+	slogo = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\arz07.png')
+
+	logo1 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\common1.png')
+	logo2 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\common2.png')
+	logo3 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\Halloween.png')
+	logo4 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\HiTech.png')
+	logo = {logo1, logo2, logo3, logo4}
+
+	xPD = imgui.CreateTextureFromFile(getWorkingDirectory() .. "\\resource\\ezHelper\\XPayDay.png")
 
 	local config = imgui.ImFontConfig()
     config.MergeMode = true
@@ -630,12 +631,11 @@ end
 
 --MAIN
 function main()
-    sampChatHook = hook.new("void(__thiscall *)(uintptr_t this, uint32_t type, const char* text, const char* prefix, uint32_t color, uint32_t pcolor)", sampChatHook, getModuleHandle('samp.dll') + 0x67460)
     while not isSampAvailable() do
         wait(100)
     end
     applySampfuncsPatch()
-	lua_thread.create(time)
+    lua_thread.create(time)
 	mac = bass.BASS_StreamCreateFile(false, "moonloader\\resource\\ezHelper\\oldarzmusic.mp3", 0, 0, 0)
 	lua_thread.create(function()
 		if TimeWeather.twtoggle[0] == true then
@@ -651,6 +651,8 @@ function main()
 			end
 		end
 	end)
+	sampChatHook = hook.new("void(__thiscall *)(uintptr_t this, uint32_t type, const char* text, const char* prefix, uint32_t color, uint32_t pcolor)", sampChatHook, getModuleHandle('samp.dll') + 0x67460)
+	
 	repeat
 		wait(0)
 	until sampIsLocalPlayerSpawned()
@@ -858,11 +860,10 @@ function sampChatHook(this, type, text, prefix, color, pcolor)
     local text = ffi.string(text)
     if text:find('^Сервер полон%. Повторяем подключение%.%.%.') then
         connectingcount = connectingcount + 1
-        return sampChatHook(this, type, ffi.cast('char*', ffi.string(text)..' (x'..tostring(connectingcount)..')'), prefix, color, pcolor)
+        text = ('%s (x%d)'):format(text, connectingcount)
     elseif text:find('^Успешный вход%. Приятной игры на сервере .+') then
-        sampChatHook(this, type, ffi.cast('char*', ffi.string('Успешный вход (Попыток: '..tostring(connectingcount)..') Приятной игры на сервере :)')), prefix, color, pcolor)
-        connectingcount = 0
-        return
+        text = ('Успешный вход (Попыток: %d) Приятной игры на сервере :)'):format(connectingcount)
+		connectingcount = 0
     end
     sampChatHook(this, type, text, prefix, color, pcolor)
 end
@@ -1151,6 +1152,16 @@ function hotkeyactivate()
 				sampSendChat('/balloon')
 			end
 		end
+
+		if #deltap.v < 2 then
+			if wasKeyPressed(deltap.v[1]) then
+				sampSendChat('/delta')
+			end
+		else
+			if isKeyDown(deltap.v[1]) and wasKeyPressed(deltap.v[2]) then
+				sampSendChat('/delta')
+			end
+		end
 	end
 end
 
@@ -1186,14 +1197,13 @@ local hudFrame = imgui.OnFrame(
 				imgui.SetNextWindowSize(imgui.ImVec2(420, 290), imgui.Cond.Always)
 				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.2, 0.2, 0.2, 0))
 				imgui.Begin('##1', boolhud.show, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
-				renderDrawTexture(slogo, sizeX / 1.069, 17, 125, 54, 0, 0xFFFFFFFF)
-				renderDrawTexture(logo[boolhud.lid[0]], sizeX / 1.1745, 16, 50, 50, 0, 0xFFFFFFFF)
+				DL:AddImage(slogo, imgui.ImVec2(sizeX / 1.069, 17), imgui.ImVec2(sizeX / 1.069 + 125, 17 + 54))
+				DL:AddImage(logo[boolhud.lid[0]], imgui.ImVec2(sizeX / 1.1745, 16), imgui.ImVec2(sizeX / 1.1745 + 50, 16 + 50))
 				local servername = sampGetCurrentServerName()
 				local xpdint = servername:match("%d")
 				if xpdint ~= nil then
-					renderDrawTexture(xPD, sizeX / 1.29, 27, 31, 30, 0, 0xFFFFFFFF)
 					imgui.PushFont(hudfont7)
-					--print(xpdint)
+					DL:AddImage(xPD, imgui.ImVec2(sizeX / 1.29, 27), imgui.ImVec2(sizeX / 1.29 + 31, 27 + 30))
 					DL:AddText(imgui.ImVec2(sizeX / 1.28685, 34), 0xFFFFFFFF, "X"..xpdint)
 					imgui.PopFont()
 				end
@@ -1233,6 +1243,9 @@ local hudFrame = imgui.OnFrame(
 				imgui.CustomAnimProgressBar("armour", armour, 100, 4, 325, 151, imgui.ImVec2(175,20), imgui.ImVec4(0.35, 0.35,0.35, 1), imgui.ImVec4(0.6, 0.6, 0.6, 1))
 				imgui.SetCursorPos(imgui.ImVec2(60, 195)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{000000}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
 				imgui.SetCursorPos(imgui.ImVec2(60, 193)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
+				imgui.PushStyleVarFloat(imgui.StyleVar.Alpha, colorhunger.alpha)
+				imgui.SetCursorPos(imgui.ImVec2(60, 193)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{fa0000}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
+				imgui.PopStyleVar()
 				imgui.SetCursorPos(imgui.ImVec2(90, 197))
 				imgui.CustomAnimProgressBar("##shadow", 100, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0, 0, 0, 1), imgui.ImVec4(0, 0, 0, 1))
 				imgui.SetCursorPos(imgui.ImVec2(90, 195))
@@ -1453,7 +1466,11 @@ local widgetFrame = imgui.OnFrame(
 	function() return boolwidget.show[0] and boolwidget.widget[0] end,
 	function(w)
 		imgui.DisableInput = false
-		w.HideCursor = (piebool.piemenu[0] and not imgui.IsMouseDown(2))
+		if piebool.piemenu[0] then
+			w.HideCursor = (piebool.piemenu[0] and not imgui.IsMouseDown(2))
+		else
+			w.HideCursor = true
+		end
 
 		if not isPauseMenuActive() and sampGetChatDisplayMode() ~= 0 then
 			imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(boolwidget.color[0], boolwidget.color[1], boolwidget.color[2],  boolwidget.color[3]))
@@ -1571,6 +1588,11 @@ local widgetFrame = imgui.OnFrame(
 						if piebool.shar[0] then
 							if pie.PieMenuItem(fa.ICON_FA_GLOBE..u8'Шар') then
 								sampSendChat("/balloon")
+							end
+						end
+						if piebool.deltap[0] then
+							if pie.PieMenuItem(fa.ICON_FA_PLANE..u8'Дельтаплан') then
+								sampSendChat("/delta")
 							end
 						end
 						pie.EndPieMenu()
@@ -1875,7 +1897,7 @@ local newFrame = imgui.OnFrame(
 							end
 							imgui.Separator()
 							if imgui.Checkbox(u8"PieMenu", piebool.piemenu) then
-								widgetcfg.piemenu.active = piebool.piemenu[0]
+								widgetcfg.piemenu_active = piebool.piemenu[0]
 								ecfg.save(wgname, widgetcfg)
 							end
 							if piebool.piemenu[0] then
@@ -1889,59 +1911,63 @@ local newFrame = imgui.OnFrame(
 								if imgui.BeginPopupModal('PieSettings', false, imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar) then
 									imgui.CenterTextColoredRGB("{1E90FF}Машина")
 									if imgui.Checkbox(u8"Заправить", piebool.fillcar) then
-										widgetcfg.piemenu.car.fill = piebool.fillcar[0]
+										widgetcfg.piemenu_car_fill = piebool.fillcar[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Зарядить", piebool.chargecar) then
-										widgetcfg.piemenu.car.charge = piebool.chargecar[0]
+										widgetcfg.piemenu_car_charge = piebool.chargecar[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Починить", piebool.repcar) then
-										widgetcfg.piemenu.car.repcar = piebool.repcar[0]
+										widgetcfg.piemenu_car_repcar = piebool.repcar[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Домкрат", piebool.domkrat) then
-										widgetcfg.piemenu.car.domkrat = piebool.domkrat[0]
+										widgetcfg.piemenu_car_domkrat = piebool.domkrat[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									imgui.Separator()
 									imgui.CenterTextColoredRGB("{1E90FF}Предметы")
 									if imgui.Checkbox(u8"Аптечка", piebool.healmed) then
-										widgetcfg.piemenu.item.healmed = piebool.healmed[0]
+										widgetcfg.piemenu_item_healmed = piebool.healmed[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Наркотики", piebool.narko) then
-										widgetcfg.piemenu.item.narko = piebool.narko[0]
+										widgetcfg.piemenu_item_narko = piebool.narko[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Бронежилет", piebool.armor) then
-										widgetcfg.piemenu.item.armor = piebool.armor[0]
+										widgetcfg.piemenu_item_armor = piebool.armor[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Пиво", piebool.beer) then
-										widgetcfg.piemenu.item.beer = piebool.beer[0]
+										widgetcfg.piemenu_item_beer = piebool.beer[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Маска", piebool.mask) then
-										widgetcfg.piemenu.item.mask = piebool.mask[0]
+										widgetcfg.piemenu_item_mask = piebool.mask[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									imgui.Separator()
 									imgui.CenterTextColoredRGB("{1E90FF}Аксессуары")
 									if imgui.Checkbox(u8"ПУ", piebool.rcveh) then
-										widgetcfg.piemenu.acs.rcveh = piebool.rcveh[0]
+										widgetcfg.piemenu_acs_rcveh = piebool.rcveh[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Скейт", piebool.skate) then
-										widgetcfg.piemenu.acs.skate = piebool.skate[0]
+										widgetcfg.piemenu_acs_skate = piebool.skate[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Сёрф", piebool.surf) then
-										widgetcfg.piemenu.acs.surf = piebool.surf[0]
+										widgetcfg.piemenu_acs_surf = piebool.surf[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									if imgui.Checkbox(u8"Шар", piebool.shar) then
-										widgetcfg.piemenu.acs.shar = piebool.shar[0]
+										widgetcfg.piemenu_acs_shar = piebool.shar[0]
+										ecfg.save(wgname, widgetcfg)
+									end
+									if imgui.Checkbox(u8"Дельтаплан", piebool.deltap) then
+										widgetcfg.piemenu_acs_deltap = piebool.deltap[0]
 										ecfg.save(wgname, widgetcfg)
 									end
 									imgui.Separator()
@@ -2785,6 +2811,14 @@ function hotkeylist()
 					hcfg.shar = {unpack(shar.v)}
 					ecfg.save(hkname, hcfg)
 				end
+
+				imgui.SetCursorPos(imgui.ImVec2(5,125 + 3));
+				imgui.TextColoredRGB('Дельтаплан')
+				imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 125))
+				if imgui.HotKey(u8'##deltap', deltap, 90) then
+					hcfg.deltap = {unpack(deltap.v)}
+					ecfg.save(hkname, hcfg)
+				end
 			imgui.EndChild()
 
 			imgui.SetCursorPos(imgui.ImVec2(285.000000,155.000000));
@@ -2887,16 +2921,24 @@ end
 function sampev.onServerMessage(color, text)
 	--if text:find(".+") then print(text) end
 	if features.autoid[0] == true then
-		if text:find('Вы успешно начали погоню за игроком .') then
+		if text:find('Вы успешно начали погоню за игроком .+') then
 			namePur = text:match('Вы успешно начали погоню за игроком (%w+_?%w+)')
+			print(namePur)
 		end
-		if text:find('Игрок ушел от погони! Последнее местоположение') then
-			pursuit = lua_thread.create(function()
+		
+		if text:find('%[Погоня%] %{......%}Игрок ушел от погони! Последнее местоположение') then
+			print("1111")
+			local pursuitoff = false
+			local pursuit = lua_thread.create(function()
 				wait(800)
 				sampSendChat("/id " .. namePur)
-				pursuit = 0
+				pursuitoff = true
 			end)
-			pursuit:terminate()
+			if pursuitoff then
+				pursuit:terminate()
+				pursuitoff = false
+			end
+			
 		end
 	end
 	if callproda == true then
@@ -2933,18 +2975,80 @@ function setWeather(weather)
 end
 
 function sampev.onShowTextDraw(id, data)
+	if boolhud.hud[0] then
+		if data.text:find(".+ HP") or data.text:find(".+ H") then
+			return false
+		end
+		if data.text:find('You are hungry!') or data.text:find('You are very hungry!') then
+			hungeranim()
+			return false
+		end
+	end
+
+	if boolfixes.fixgps[0] == true then
+		if data.text:find("GPS: ON") then
+			return false
+		end
+	end
+
+	if carfuncs.autotwinturbo[0] then
+		if isCharInAnyCar(playerPed) then
+			if data.text:find('~n~~n~~n~~n~~n~~n~~n~~n~~w~Style: ~g~Comfort!') then
+				ezMessage("AutoTT: TwinTurbo включён.")
+				sampSendChat('/style')
+			end
+		end
+	end
+
+	--[[if data.text:find('Played .+') then
+		data.text = "~n~"..data.text
+		return {id, data}
+	end]]
+	if data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK~n~/lock" or data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK~n~/lock" then
+		data.text = "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK"
+		return {id, data}
+	elseif data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~CAR~r~ LOCK~n~/lock" or data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~r~ LOCK~n~/lock" then
+		data.text = "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~r~ LOCK"
+		return {id, data}
+	end
+	print(data.text)
 	if data.text == "…H‹EHЏAP’" or data.text == "INVENTORY" then
 		inv = id
 	end
-	if data.text == "A" or data.text == "rizona" or data.text == "mesa" then
+	if data.text == "A" or data.text == "rizona" or data.text == "mesa" or data.text:find("~y~PAYDAY~n~Launcher.+") or data.text:find("Armour") then
 		return false
+	end
+
+	if data.position.x == 620 and data.position.y == 230 then
+		data.text = "~n~"..data.text
+		return {id, data}
+	end
+
+	if features.correctdmg[0] then
+		if data.text:find('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed %d+ Sec.') then
+			dmgtime = data.text:match('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed (%d+) Sec.')
+			data.text = string.format(conv("~n~~n~~n~~n~~n~~n~~n~~n~~y~Осталось:~n~~w~%s"), get_clock(dmgtime))
+			return {id, data}
+		end
 	end
 
 	if carfuncs.autofill[0] == true then
 		--print("ID: "..id)
 		--print("DATA: "..data.text)	
-		--print("POS_X: "..data.position.x)
-		--print("POS_Y: "..data.position.y)
+		print("POS_X: "..data.position.x)
+		print("POS_Y: "..data.position.y)
+		if fillcar == true then
+			atfll = lua_thread.create_suspended(function()
+				if data.text:find("~w~This type of fuel ~r~ is not suitable~w~~n~ for your vehicles!") then
+					sampSendClickTextdraw(arrow_id)
+					prodaoilfill = false
+				else
+					prodaoilfill = true
+				end
+			end)
+			atfll:run()
+		end
+
 		if data.text == "ELECTRIC" then
 			electofill = true
 		end
@@ -3000,19 +3104,26 @@ function sampev.onShowTextDraw(id, data)
 	end
 end
 
-function sampev.onDisplayGameText(style, time, text)
+function hungeranim()
+	local potok = lua_thread.create(function()
+		colorhunger.switch()
+		while true do
+			wait(0)
+			if colorhunger.alpha == 1 then
+				colorhunger.switch()
+			end
+		end
+		potok:terminate()
 
-	if carfuncs.autofill[0] == true then
-		if fillcar == true then
-			atfll = lua_thread.create_suspended(function()
-				if text:find("~w~This type of fuel ~r~ is not suitable~w~~n~ for your vehicles!") then
-					sampSendClickTextdraw(arrow_id)
-					prodaoilfill = false
-				else
-					prodaoilfill = true
-				end
-			end)
-			atfll:run()
+	end)
+	
+end
+
+--[[function sampev.onDisplayGameText(style, time, text)
+	if boolhud.hud[0] then
+		if text:find('You are hungry!') or text:find('You are very hungry!') then
+			hungeranim()
+			return false
 		end
 	end
 
@@ -3024,7 +3135,7 @@ function sampev.onDisplayGameText(style, time, text)
 			end
 		end
 	end
-	--if text:find('.+') then print(text) end
+	if text:find('.+') then print(text) end
 	if features.correctdmg[0] then
 		if text:find('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed %d+ Sec.') then
 			dmgtime = text:match('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed (%d+) Sec.')
@@ -3045,8 +3156,7 @@ function sampev.onDisplayGameText(style, time, text)
 	if text:find("~y~PAYDAY~n~Launcher.+") then
 		return false
 	end
-	
-end
+end]]
 
 function sampev.onPlaySound(id, pos)
 	if id == 17802 and features.kolokol[0] then
@@ -3171,9 +3281,11 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 	end
 	if id == 15330 then
 		countdialog = countdialog + 1
-		if countdialog >= 2 then return false end
-		
+		if countdialog >= 3 then 
+			sampSendDialogResponse(15300, 0, 0, nil)
+		end
     end
+
 	if id == 222 then
     	fixnewarzframes = true
 		if boolwidget.show[0] and boolwidget.widget[0] then
