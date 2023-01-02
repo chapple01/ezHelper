@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.5.5")
+script_version("1.5.6")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -32,7 +32,6 @@ local gameClockk = 0
 local afk = 0
 local afks = 0
 local countdialog = 0
-local connectingcount = 0
 local fps = 0
 local ping = 0
 local servonl = 0
@@ -47,12 +46,13 @@ local cursortw = true
 local inputblock = false
 local checkpopupwindow = false
 local stroboscope = false
-local fixnewarzframes = false
+local fixcefbool = false
 local actv = false
 local spawn = false
 local fillcar = false
 local prodaoilfill = false
 local callproda = false
+local auth = false
 
 		-----==[[OTHER]]==-----
 local directIni = "ezHelper/ezHelper.ini"
@@ -93,7 +93,8 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 03.11.2022 - 1.5.2 - {FF69B4}[Update From The Hospital]{ffffff} Обновил RHUD. Исправил баги с RHUD. Добавил проверку на лаунчер (checkbox).
 06.11.2022 - 1.5.3 - {FF69B4}[Update From The Hospital]{ffffff} Добавил отображение количества попыток подключений к серверу.
 25.11.2022 - 1.5.4 - Оптимизировал функцию отображение количества попыток подключений к серверу. Исправил функцию AutoID. Исправил мелкие баги с RHUD, добавил мерцание иконки, когда вы голодаете. Восстановил работу функций "Autofill", AutoTT", "RGPS", "Correct DMG" - спасибо Аризоне, одной говнообновой убили двух зайцев: 1) Неработающие скрипты 2) Огромные текста на экране.
-10.12.2022 - 1.5.5 - Добавил AutoPin для Vice City, исправил баг с некликабельным инвентарём. Встречайте: PieBinder! (БЕТА).  Исправил мелкие баги с интерфейсом.
+10.12.2022 - 1.5.5 - Добавил AutoPin для Vice City, исправил баг с некликабельным инвентарём. Встречайте: PieBinder! (БЕТА). Исправил мелкие баги с интерфейсом.
+02.01.2023 - 1.5.6 - Убрал отображение количества попыток подключений к серверу, так как скрипт с ним не стабильно работал. Переименовал Fix WARZ на Fix CEF. Добавил новую икноку в RHUD.
 ]]
 
 	-----===[[INIFILE]]===-----
@@ -260,7 +261,7 @@ local boolfixes = {
 	fixgps = new.bool(mainIni.fixes.fixgps),
 	fixspawn = new.bool(mainIni.fixes.fixspawn),
 	fixvint = new.bool(mainIni.fixes.fixvint),
-	fixarzdialogs = new.bool(mainIni.fixes.fixarzdialogs),
+	fixcef = new.bool(mainIni.fixes.fixarzdialogs),
 	launcher = new.bool(mainIni.fixes.launcher),
 }
 
@@ -590,7 +591,8 @@ imgui.OnInitialize(function()
 	logo2 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\common2.png')
 	logo3 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\Halloween.png')
 	logo4 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\HiTech.png')
-	logo = {logo1, logo2, logo3, logo4}
+	logo5 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\NewYear.png')
+	logo = {logo1, logo2, logo3, logo4, logo5}
 
 	xPD = imgui.CreateTextureFromFile(getWorkingDirectory() .. "\\resource\\ezHelper\\XPayDay.png")
 
@@ -635,55 +637,6 @@ end)
 
 local hun = 0
 
---HOOKS
-local hook = {hooks = {}}
-addEventHandler('onScriptTerminate', function(scr)
-    if scr == script.this then
-        for i, hook in ipairs(hook.hooks) do
-            if hook.status then
-                hook.stop()
-            end
-        end
-    end
-end)
-ffi.cdef [[
-    int VirtualProtect(void* lpAddress, unsigned long dwSize, unsigned long flNewProtect, unsigned long* lpflOldProtect);
-]]
-function hook.new(cast, callback, hook_addr, size)
-    jit.off(callback, true) --off jit compilation | thx FYP
-    local size = size or 5
-    local new_hook = {}
-    local detour_addr = tonumber(ffi.cast('intptr_t', ffi.cast('void*', ffi.cast(cast, callback))))
-    local void_addr = ffi.cast('void*', hook_addr)
-    local old_prot = ffi.new('unsigned long[1]')
-    local org_bytes = ffi.new('uint8_t[?]', size)
-    ffi.copy(org_bytes, void_addr, size)
-    local hook_bytes = ffi.new('uint8_t[?]', size, 0x90)
-    hook_bytes[0] = 0xE9
-    ffi.cast('uint32_t*', hook_bytes + 1)[0] = detour_addr - hook_addr - 5
-    new_hook.call = ffi.cast(cast, hook_addr)
-    new_hook.status = false
-    local function set_status(bool)
-        new_hook.status = bool
-        ffi.C.VirtualProtect(void_addr, size, 0x40, old_prot)
-        ffi.copy(void_addr, bool and hook_bytes or org_bytes, size)
-        ffi.C.VirtualProtect(void_addr, size, old_prot[0], old_prot)
-    end
-    new_hook.stop = function() set_status(false) end
-    new_hook.start = function() set_status(true) end
-    new_hook.start()
-    table.insert(hook.hooks, new_hook)
-    return setmetatable(new_hook, {
-        __call = function(self, ...)
-            self.stop()
-            local res = self.call(...)
-            self.start()
-            return res
-        end
-    })
-end
---HOOKS
-
 --MAIN
 function main()
     while not isSampAvailable() do
@@ -691,6 +644,7 @@ function main()
     end
     applySampfuncsPatch()
     lua_thread.create(time)
+	lua_thread.create(fixcef)
 	mac = bass.BASS_StreamCreateFile(false, "moonloader\\resource\\ezHelper\\oldarzmusic.mp3", 0, 0, 0)
 	lua_thread.create(function()
 		if TimeWeather.twtoggle[0] == true then
@@ -706,12 +660,12 @@ function main()
 			end
 		end
 	end)
-	sampChatHook = hook.new("void(__thiscall *)(uintptr_t this, uint32_t type, const char* text, const char* prefix, uint32_t color, uint32_t pcolor)", sampChatHook, getModuleHandle('samp.dll') + 0x67460)
 	
 	repeat
 		wait(0)
 	until sampIsLocalPlayerSpawned()
 	spawn = true
+	auth = false
 	local lastver = update():getLastVersion()
     ezMessage('Скрипт загружен. Версия: '..lastver)
     if thisScript().version ~= lastver then
@@ -837,7 +791,6 @@ function main()
 
     while true do
 		wait(0)
-		
 		if sampGetGamestate() ~= 3 then
 			thisScript():reload()
 		end
@@ -890,7 +843,7 @@ function main()
 			end
 		end
         if isKeyJustPressed(VK_O) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			sampSendChat("/olock")	
+			sampSendChat("/olock")
 		end
         if isKeyJustPressed(VK_J) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/jlock")
@@ -911,60 +864,57 @@ function main()
     end
 end
 
-function sampChatHook(this, type, text, prefix, color, pcolor)
-    local text = ffi.string(text)
-    if text:find('^Сервер полон%. Повторяем подключение%.%.%.') then
-        connectingcount = connectingcount + 1
-        text = ('%s (x%d)'):format(text, connectingcount)
-    elseif text:find('^Успешный вход%. Приятной игры на сервере .+') then
-        text = ('Успешный вход (Попыток: %d) Приятной игры на сервере :)'):format(connectingcount)
-		connectingcount = 0
-    end
-    sampChatHook(this, type, text, prefix, color, pcolor)
+function fixcef()
+	while true do
+		wait(0)
+		if boolfixes.fixcef[0] then
+			if isKeyJustPressed(VK_B) and not sampIsChatInputActive() and not sampIsDialogActive() then
+				fixcefbool = true
+				if boolwidget.show[0] and boolwidget.widget[0] then
+					boolwidget.show[0] = false
+				end
+				if boolhud.show[0] and boolhud.hud[0] then
+					boolhud.show[0] = false
+				end
+			elseif isKeyJustPressed(VK_U) and not sampIsChatInputActive() and not sampIsDialogActive() then
+				if boolwidget.show[0] and boolwidget.widget[0] then
+					boolwidget.show[0] = false
+				end
+				if boolhud.show[0] and boolhud.hud[0] then
+					boolhud.show[0] = false
+				end
+			end
+			if isKeyDown(VK_F5) then
+				printStringNow("Fix CEF: ~b~~g~ACTIVATE", 10)
+				if boolwidget.show[0] and boolwidget.widget[0] then
+					boolwidget.show[0] = false
+				end
+				if boolhud.show[0] and boolhud.hud[0] then
+					boolhud.show[0] = false
+				end
+			elseif wasKeyReleased(VK_F5) then
+				if not boolwidget.show[0] and boolwidget.widget[0] then
+					boolwidget.show[0] = true
+				end
+				if not boolhud.show[0] and boolhud.hud[0] then
+					boolhud.show[0] = true
+				end
+			end
+			
+			if fixcefbool == true then
+				printStringNow("Fix CEF: ~b~~g~ACTIVATE", 10)
+			end
+
+			if auth == true then
+				printStringNow("Fix CEF: ~b~~g~ACTIVATE", 10)
+			end
+		end
+	end
 end
 
 function fixes_func()
-	if boolfixes.fixarzdialogs[0] then
-		if isKeyJustPressed(VK_B) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			fixnewarzframes = true
-			if boolwidget.show[0] and boolwidget.widget[0] then
-				boolwidget.show[0] = false
-			end
-			if boolhud.show[0] and boolhud.hud[0] then
-				boolhud.show[0] = false
-			end
-		elseif isKeyJustPressed(VK_U) and not sampIsChatInputActive() and not sampIsDialogActive() then
-			if boolwidget.show[0] and boolwidget.widget[0] then
-				boolwidget.show[0] = false
-			end
-			if boolhud.show[0] and boolhud.hud[0] then
-				boolhud.show[0] = false
-			end
-		end
-		if isKeyDown(VK_F5) then
-			printStringNow("Fix ARZ_Windows: ~b~~g~ACTIVATE", 10)
-			if boolwidget.show[0] and boolwidget.widget[0] then
-				boolwidget.show[0] = false
-			end
-			if boolhud.show[0] and boolhud.hud[0] then
-				boolhud.show[0] = false
-			end
-		elseif wasKeyReleased(VK_F5) then
-			if not boolwidget.show[0] and boolwidget.widget[0] then
-				boolwidget.show[0] = true
-			end
-			if not boolhud.show[0] and boolhud.hud[0] then
-				boolhud.show[0] = true
-			end
-		end
-		
-		if fixnewarzframes == true then
-			printStringNow("Fix ARZ_Windows: ~b~~g~ACTIVATE", 10)
-		end
-	end
-
 	if isKeyJustPressed(VK_ESCAPE) and not sampIsChatInputActive() and not sampIsDialogActive() then
-		fixnewarzframes = false
+		fixcefbool = false
 		if not boolwidget.show[0] and boolwidget.widget[0] then
 			boolwidget.show[0] = true
 		end
@@ -2433,21 +2383,51 @@ local newFrame = imgui.OnFrame(
 								mainIni.hud.lid = boolhud.lid[0]
 								inicfg.save(mainIni, directIni)
 							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[1], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
 							imgui.SameLine()
 							if imgui.RadioButtonIntPtr(u8'White', boolhud.lid,2) then
 								mainIni.hud.lid = boolhud.lid[0]
 								inicfg.save(mainIni, directIni)
+							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[2], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
 							end
 							imgui.SameLine()
 							if imgui.RadioButtonIntPtr(u8'Halloween', boolhud.lid,3) then
 								mainIni.hud.lid = boolhud.lid[0]
 								inicfg.save(mainIni, directIni)
 						 	end
-							 imgui.SameLine()
-							 if imgui.RadioButtonIntPtr(u8'HiTech', boolhud.lid,4) then
-								 mainIni.hud.lid = boolhud.lid[0]
-								 inicfg.save(mainIni, directIni)
-							  end
+							 if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[3], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'HiTech', boolhud.lid,4) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[4], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'NewYear', boolhud.lid,5) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[5], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
 							imgui.Separator()
 							imgui.CenterTextColoredRGB("Ваше максимальное ХП:")
 							if imgui.RadioButtonIntPtr(u8'100 HP', boolhud.maxhp,100) then
@@ -2464,6 +2444,10 @@ local newFrame = imgui.OnFrame(
 								mainIni.hud.maxhp = boolhud.maxhp[0]
 								inicfg.save(mainIni, directIni)
 						 	end
+							imgui.EndPopup()
+						end
+						if imgui.BeginPopup('prew', false, imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize) then
+							imgui.Image(logo[1], imgui.ImVec2(100, 100))
 							imgui.EndPopup()
 						end
 					end
@@ -2655,8 +2639,8 @@ local newFrame = imgui.OnFrame(
 						inicfg.save(mainIni, directIni)
 					end
 					imgui.SetCursorPos(imgui.ImVec2(30.000000,70.000000));
-					if imgui.Checkbox(u8"Fix WARZ", boolfixes.fixarzdialogs) then
-						mainIni.fixes.fixarzdialogs = boolfixes.fixarzdialogs[0]
+					if imgui.Checkbox(u8"Fix CEF", boolfixes.fixcef) then
+						mainIni.fixes.fixarzdialogs = boolfixes.fixcef[0]
 						inicfg.save(mainIni, directIni)
 					end
 					imgui.SetCursorPos(imgui.ImVec2(30.000000,95.000000));
@@ -2674,7 +2658,7 @@ local newFrame = imgui.OnFrame(
 					'{808080}Для применения, нужно перезайти.',
 					hpfont, mainfont, 14.000000, 46.000000)
 
-					imgui.ezHint('{FFFFFF}Исправляет баг с новыми окнами от лаунчера Аризоны РП.\n'..
+					imgui.ezHint('{FFFFFF}Исправляет баг с CEF окнами от лаунчера Аризоны РП.\n'..
 					'{808080}Небо заменялось на окно ArizonaPASS/Donate, F5.',
 					hpfont, mainfont, 14.000000, 71.000000)
 
@@ -3800,14 +3784,20 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 	end
 	if id == 15330 then
 		countdialog = countdialog + 1
-		if countdialog >= 3 then
-			sampSendDialogResponse(15330, 0, nil, nil) 
-            return false
+		--sampSendDialogResponse(15330, 0, nil, nil) 
+		if countdialog >= 2 then
+			sampSendChat("/mm")
+			fixxx = true
+			return false
 		end
     end
-
+	if id == 722 and fixxx then
+		sampSendDialogResponse(722, 0 , 0 , -1) 
+		fixxx = false
+		return false
+	end
 	if id == 222 then
-    	fixnewarzframes = true
+    	fixcefbool = true
 		if boolwidget.show[0] and boolwidget.widget[0] then
 			boolwidget.show[0] = false
 		end
@@ -3831,11 +3821,12 @@ function ShowMessage(text, title, style)
 end
 
 function onReceivePacket(id)
+	--print(id)
     if id == 34 then
+		auth = true
 		if features.mac[0] then
-			--print(id)
 			bass.BASS_ChannelSetAttribute(mac, BASS_ATTRIB_VOL, 0.1) -- громкость
-			bass.BASS_ChannelPlay(mac, false)
+			bass.BASS_ChannelPlay(mac, false)	
 		end
     end
 end
@@ -4044,7 +4035,7 @@ function files_add()
 		end)
 
 	end
-	if not doesFileExist('moonloader\\resource\\ezHelper\\arz07.png') or not doesFileExist('moonloader\\resource\\ezHelper\\XPayDay.png') then
+	if not doesFileExist('moonloader\\resource\\ezHelper\\arz07.png') or not doesFileExist('moonloader\\resource\\ezHelper\\logo\\NewYear.png') then
 		ezMessage("Загрузка картинок худа...")
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/arz07.png", getWorkingDirectory().."/resource/ezHelper/arz07.png", function(id, status, p1, p2) end)
 		
@@ -4052,6 +4043,7 @@ function files_add()
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/common2.png", getWorkingDirectory().."/resource/ezHelper/logo/common2.png", function(id, status, p1, p2) end)
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/Halloween.png", getWorkingDirectory().."/resource/ezHelper/logo/Halloween.png", function(id, status, p1, p2) end)
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/HiTech.png", getWorkingDirectory().."/resource/ezHelper/logo/HiTech.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/NewYear.png", getWorkingDirectory().."/resource/ezHelper/logo/NewYear.png", function(id, status, p1, p2) end)
 		
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/XPayDay.png", getWorkingDirectory().."/resource/ezHelper/XPayDay.png", function(id, status, p1, p2) end)
 		
