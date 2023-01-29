@@ -3726,7 +3726,7 @@ function getAmmoInClip()
 end
 
 function sampev.onShowDialog(id, style, title, button1, button2, text)
-	print('\nID: '..id..'\nSTYLE: '..style..'\nTITLE: '..title..'\nTEXT: '..text)
+	--print('\nID: '..id..'\nSTYLE: '..style..'\nTITLE: '..title..'\nTEXT: '..text)
 	local servername = sampGetCurrentServerName()
 	if servername:find("Vice City") then
 		if text:find("{929290}¬ы должны подтвердить свой PIN%-код к карточке.") then
