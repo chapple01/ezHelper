@@ -10,12 +10,14 @@ require "lib.moonloader"
 local vkeys = require 'vkeys'
 local rkeys = require 'rkeys'
 local sampev = require 'lib.samp.events'
+local BitStreamIO = require 'lib.samp.events.bitstream_io'
 local encoding = require 'encoding'
 local inicfg = require 'inicfg'
 local ecfg = require 'ecfg'
 local imgui = require 'mimgui'
 local ffi = require 'ffi'
-local fa = require'fAwesome5'
+local fa = require 'fAwesome5'
+local faicons = require 'fAwesome6'
 local memory = require 'memory'
 local bass = require 'lib.bass'
 local pie = require 'mimgui_piemenu'
@@ -32,13 +34,13 @@ local gameClockk = 0
 local afk = 0
 local afks = 0
 local countdialog = 0
-local fps = 0
 local ping = 0
 local servonl = 0
+local name = 'Your_Name'
 local connectingTime = 0
 local cost_id = 0
-local arrow_id = 0
 local fill_id = 0
+local fuelId, currentLiters, maxLiters = 0, 50, 100
 
 	  -----===[[BOOLS]]===-----
 local cursor = true
@@ -49,8 +51,6 @@ local stroboscope = false
 local fixcefbool = false
 local actv = false
 local spawn = false
-local fillcar = false
-local prodaoilfill = false
 local callproda = false
 local auth = false
 
@@ -95,6 +95,7 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 25.11.2022 - 1.5.4 - Оптимизировал функцию отображение количества попыток подключений к серверу. Исправил функцию AutoID. Исправил мелкие баги с RHUD, добавил мерцание иконки, когда вы голодаете. Восстановил работу функций "Autofill", AutoTT", "RGPS", "Correct DMG" - спасибо Аризоне, одной говнообновой убили двух зайцев: 1) Неработающие скрипты 2) Огромные текста на экране.
 10.12.2022 - 1.5.5 - Добавил AutoPin для Vice City, исправил баг с некликабельным инвентарём. Встречайте: PieBinder! (БЕТА). Исправил мелкие баги с интерфейсом.
 02.01.2023 - 1.5.6 - Убрал отображение количества попыток подключений к серверу, так как скрипт с ним не стабильно работал. Переименовал Fix WARZ на Fix CEF. Добавил новую икноку в RHUD.
+29.01.2023 - 1.5.7 - Откорректировал отображение меню RHUD. Исправил AutoFill под лаунчер (спасибо chapo). Добавил функцию удаление игроков/машин в зоне стрима. Исправил баг с лимитом денег в RHUD. Обновил Виджет, теперь в нём есть ещё более полезная информация! Оптимизировал функцию Fix CEF, теперь она срабатывает при появлении окон CEF, а не по триггерам по типу нажатой кнопки.
 ]]
 
 	-----===[[INIFILE]]===-----
@@ -601,7 +602,7 @@ imgui.OnInitialize(function()
 	config.GlyphOffset.y = 1.0
 	config.GlyphOffset.x = -5.0
     local glyph_ranges = imgui.GetIO().Fonts:GetGlyphRangesCyrillic()
-    local iconRanges = imgui.new.ImWchar[3](fa.min_range, fa.max_range, 0)
+    iconRanges = imgui.new.ImWchar[3](fa.min_range, fa.max_range, 0)
     mainfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 16.0, nil, glyph_ranges) --16
    	icon = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 20.0, config, iconRanges)
 	smallfont = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 14.0, nil, glyph_ranges) --14
@@ -633,6 +634,12 @@ imgui.OnInitialize(function()
 
 
 	imgui.GetIO().IniFilename = nil
+    local config6 = imgui.ImFontConfig()
+	iconRanges6 = imgui.new.ImWchar[3](faicons.min_range, faicons.max_range, 0)
+    config6.MergeMode = true
+    config6.PixelSnapH = true
+    mf6 = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 14.0, nil, glyph_ranges)
+    icon = imgui.GetIO().Fonts:AddFontFromMemoryCompressedBase85TTF(faicons.get_font_data_base85('solid'), 18, config6, iconRanges6)
 end)
 
 local hun = 0
@@ -647,15 +654,19 @@ function main()
 	lua_thread.create(fixcef)
 	mac = bass.BASS_StreamCreateFile(false, "moonloader\\resource\\ezHelper\\oldarzmusic.mp3", 0, 0, 0)
 	lua_thread.create(function()
-		if TimeWeather.twtoggle[0] == true then
-			while true do wait(0)
+		while true do wait(0)
+			if TimeWeather.twtoggle[0] == true then
 				h = tonumber(os.date('%H'))
+				int = getCharActiveInterior(PLAYER_PED)
 				if TimeWeather.realtime[0] == true then
 					mainIni.TimeWeather.hours = h
 					slider.hours[0] = h
 				end
-
-				setTime(slider.hours[0])
+				if int == 0 then
+					setTime(slider.hours[0])
+				else
+					setTime(12)
+				end
 				setWeather(slider.weather[0])
 			end
 		end
@@ -687,6 +698,7 @@ function main()
 	sampRegisterChatCommand("fh", function(id)
 		if id == "" then
 			ezMessage("Введите ID дома: /fh [ID].")
+			printStringNow("Fix CEF: ~b~~g~ACTIVATE", 199990) 
 		else
 			sampSendChat('/findihouse '..id..'')
 		end
@@ -768,7 +780,26 @@ function main()
 			end)
 		end
 	end)
-
+	sampRegisterChatCommand('invpl', function(arg)
+		invpl = not invpl
+		frid = arg
+		if frid == '' then idveh = 'Отсутсвует.' end
+		if invpl then
+			ezMessage('Удаление игроков в зоне стрима {00FF00}включено.{FFFFFF} Исключение: {87CEFA}'..frid)
+		else
+			ezMessage('Удаление игроков в зоне стрима {FF0000}отключено.')
+		end		
+	end)
+	sampRegisterChatCommand('invveh', function(arg)
+		invveh = not invveh
+		idveh = arg
+		if idveh == '' then idveh = 'Отсутсвует.' end
+		if invveh then
+			ezMessage('Удаление машин в зоне стрима {00FF00}включено.{FFFFFF} Исключение: {87CEFA}'..idveh)
+		else
+			ezMessage('Удаление машин в зоне стрима {FF0000}отключено.')
+		end	
+	end)
 		
 
 	
@@ -776,18 +807,22 @@ function main()
 		onlineIni.onDay.today = os.date("%a")
 		onlineIni.onDay.online = 0
 	end
-----------------------------------------------SpawnFix
-		if boolfixes.fixspawn[0] == true then
-			memory.fill(0x4217F4, 0x90, 21, true)
-			memory.fill(0x4218D8, 0x90, 17, true)
-			memory.fill(0x5F80C0, 0x90, 10, true)
-			memory.fill(0x5FBA47, 0x90, 10, true)
-		end
-------------------------------------------------------
+
+	if boolfixes.fixspawn[0] == true then
+		memory.fill(0x4217F4, 0x90, 21, true)
+		memory.fill(0x4218D8, 0x90, 17, true)
+		memory.fill(0x5F80C0, 0x90, 10, true)
+		memory.fill(0x5FBA47, 0x90, 10, true)
+	end
+
+	if boolhud.hud[0] == true then --moneylimit
+		writeMemory(0x571784, 4, 0x57C7FFF, false)
+		writeMemory(0x57179C, 4, 0x57C7FFF, false)
+	end
 
     	lua_thread.create(carfunc)
 		lua_thread.create(strobe)
-		lua_thread.create(famhide)
+		lua_thread.create(_rfunc)
 
     while true do
 		wait(0)
@@ -836,7 +871,7 @@ function main()
 		-----===[[CARTWEAKS]]===-----
 		if not boolfixes.launcher[0] then
 			if isKeyJustPressed(VK_L) and not sampIsChatInputActive() and not sampIsDialogActive() then
-				sampSendChat("/lock")
+				sampSendChat("/lock") --23486046 = цвет маски
 			end	
 			if isKeyJustPressed(VK_K) and not sampIsChatInputActive() and not sampIsDialogActive() then
 				sampSendChat("/key")
@@ -868,22 +903,6 @@ function fixcef()
 	while true do
 		wait(0)
 		if boolfixes.fixcef[0] then
-			if isKeyJustPressed(VK_B) and not sampIsChatInputActive() and not sampIsDialogActive() then
-				fixcefbool = true
-				if boolwidget.show[0] and boolwidget.widget[0] then
-					boolwidget.show[0] = false
-				end
-				if boolhud.show[0] and boolhud.hud[0] then
-					boolhud.show[0] = false
-				end
-			elseif isKeyJustPressed(VK_U) and not sampIsChatInputActive() and not sampIsDialogActive() then
-				if boolwidget.show[0] and boolwidget.widget[0] then
-					boolwidget.show[0] = false
-				end
-				if boolhud.show[0] and boolhud.hud[0] then
-					boolhud.show[0] = false
-				end
-			end
 			if isKeyDown(VK_F5) then
 				printStringNow("Fix CEF: ~b~~g~ACTIVATE", 10)
 				if boolwidget.show[0] and boolwidget.widget[0] then
@@ -900,13 +919,12 @@ function fixcef()
 					boolhud.show[0] = true
 				end
 			end
-			
+
 			if fixcefbool == true then
 				printStringNow("Fix CEF: ~b~~g~ACTIVATE", 10)
 			end
-
 			if auth == true then
-				printStringNow("Fix CEF: ~b~~g~ACTIVATE", 10)
+				printStringNow("Fix CEF: ~b~~g~ACTIVATE", 10) 
 			end
 		end
 	end
@@ -920,6 +938,14 @@ function fixes_func()
 		end
 		if not boolhud.show[0] and boolhud.hud[0] then
 			boolhud.show[0] = true
+		end
+	end
+	if isKeyJustPressed(VK_U) and not sampIsChatInputActive() and not sampIsDialogActive() then
+		if boolwidget.show[0] and boolwidget.widget[0] then
+			boolwidget.show[0] = false
+		end
+		if boolhud.show[0] and boolhud.hud[0] then
+			boolhud.show[0] = false
 		end
 	end
 
@@ -1479,7 +1505,7 @@ local widgetFrame = imgui.OnFrame(
 		if not isPauseMenuActive() and sampGetChatDisplayMode() ~= 0 then
 			imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(boolwidget.color[0], boolwidget.color[1], boolwidget.color[2],  boolwidget.color[3]))
 			imgui.SetNextWindowPos(imgui.ImVec2(boolwidget.posX, boolwidget.posY), imgui.Cond.Always)
-			imgui.SetNextWindowSize(imgui.ImVec2(200, -1), imgui.Cond.Always)
+			imgui.SetNextWindowSize(imgui.ImVec2(192.5, -1), imgui.Cond.Always)
 			imgui.Begin('  ', boolwidget.show, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
 			imgui.PushFont(wfont)
 			imgui.CenterTextColoredRGB(nowTime)
@@ -1488,21 +1514,33 @@ local widgetFrame = imgui.OnFrame(
             imgui.CenterTextColoredRGB(getStrDate(os.time()))
 			if boolwidget.info[0] == true then
 				imgui.Separator()
-				imgui.PushFont(smallfont)
+				imgui.PushFont(mf6)
 				imgui.SetCursorPos(imgui.ImVec2(12, 52.5))
-				imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_USER) imgui.SameLine(26)
-				imgui.TextColoredRGB(tostring(pid))
-				imgui.SetCursorPos(imgui.ImVec2(56, 52.5))
-				imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_WIFI) 
+				imgui.IconColoredRGB("{FFFFFF}"..faicons('USER')..' '..tostring(pid))
 				local len = imgui.CalcTextSize(tostring(ping)).x
-				imgui.SetCursorPos(imgui.ImVec2(82.5 - len / 2, 52.5))
-				imgui.TextColoredRGB(tostring(ping))
-				imgui.SetCursorPos(imgui.ImVec2(102, 52.5))
-				imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_USERS) imgui.SameLine(120)
-				imgui.TextColoredRGB(tostring(servonl))
-				imgui.SetCursorPos(imgui.ImVec2(151, 52.5))
-				imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_IMAGES) imgui.SameLine(168)
-				imgui.TextColoredRGB(tostring(fps))
+				imgui.SetCursorPos(imgui.ImVec2(60, 52.5))
+				imgui.IconColoredRGB("{FFFFFF}"..faicons('WIFI')..' '..tostring(ping))
+				if timerState == true then
+					imgui.SetCursorPos(imgui.ImVec2(147.5, 52.5))
+					if timerStart and timerEndTime then
+						local timerEndTimeSec = timerEndTime
+						local showtime = timerEndTimeSec - (os.time() - timerStart)
+						imgui.IconColoredRGB("{FF0000}"..faicons('SHIELD_BLANK')..' '..showtime)
+						if showtime == 0 then
+							timerState = false
+						end
+					end
+				else
+					imgui.SetCursorPos(imgui.ImVec2(152.5, 52.5))
+					imgui.IconColoredRGB("{FFFFFF}"..faicons('SHIELD_BLANK'))
+				end
+				imgui.SetCursorPos(imgui.ImVec2(114, 52.5))
+				clor = (("%06X"):format(bit.band(sampGetPlayerColor(pid), 0xFFFFFF)))
+				if sampGetPlayerColor(pid) == 23486046 then
+					imgui.IconColoredRGB("{"..clor.."}"..faicons('MASK'))
+				else
+					imgui.IconColoredRGB("{FFFFFF}"..faicons('MASK'))
+				end
 				imgui.PopFont()
 				imgui.SetCursorPosY(75)
 			end
@@ -1817,35 +1855,35 @@ local widgetFrame = imgui.OnFrame(
 local updateFrame = imgui.OnFrame(
 	function() return updatewindow[0] end,
 	function(player)
-	if not isPauseMenuActive() then
-		imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(270, 180), imgui.Cond.FirstUseEver)
-        imgui.Begin("UpdateWindow", updatewindow, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
-		imgui.DisableInput = false
-		imgui.PushFont(mainfont)
-		imgui.CenterTextColoredRGB('Обновление ezHelper!')
-		imgui.Separator()
-		imgui.PopFont()
-		imgui.PushFont(smallfont)
-		imgui.PopFont()
-		imgui.BeginChild("##UpdateChild",imgui.ImVec2(260, 95), true)
-		imgui.PushFont(smallfont)
-		imgui.CenterTextColoredRGB('Что нового?')
-		imgui.WrappedTextRGB(utext)
-		imgui.PopFont()
-		imgui.EndChild()
-		imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.5, 0.5))
-		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6 + 5), 130))
-		imgui.PushFont(mainfont)
-		if imgui.AnimatedButton(u8"Да", imgui.ImVec2(80, 35)) then updatewindow[0] = false update():download() end
-		imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6) + 88 + 5, 130))
-		if imgui.AnimatedButton(u8"Нет", imgui.ImVec2(80, 35)) then updatewindow[0] = false end
-		imgui.PopFont()
-		imgui.PopStyleVar()
-		
-		imgui.End()
+		if not isPauseMenuActive() then
+			imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 2, sizeY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
+			imgui.SetNextWindowSize(imgui.ImVec2(310, 180), imgui.Cond.FirstUseEver)
+			imgui.Begin("UpdateWindow", updatewindow, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
+			imgui.DisableInput = false
+			imgui.PushFont(mainfont)
+			imgui.CenterTextColoredRGB('Обновление ezHelper!')
+			imgui.Separator()
+			imgui.PopFont()
+			imgui.PushFont(smallfont)
+			imgui.PopFont()
+			imgui.BeginChild("##UpdateChild",imgui.ImVec2(300, 95), true)
+			imgui.PushFont(smallfont)
+			imgui.CenterTextColoredRGB('Что нового?')
+			imgui.WrappedTextRGB(utext)
+			imgui.PopFont()
+			imgui.EndChild()
+			imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.5, 0.5))
+			imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6 + 5), 130))
+			imgui.PushFont(mainfont)
+			if imgui.AnimatedButton(u8"Да", imgui.ImVec2(80, 35)) then updatewindow[0] = false update():download() end
+			imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6) + 88 + 5, 130))
+			if imgui.AnimatedButton(u8"Нет", imgui.ImVec2(80, 35)) then updatewindow[0] = false end
+			imgui.PopFont()
+			imgui.PopStyleVar()
+			
+			imgui.End()
+		end
 	end
-end
 )
 
 local TimeWeatherFrame = imgui.OnFrame(
@@ -2388,7 +2426,7 @@ local newFrame = imgui.OnFrame(
 								imgui.Image(logo[1], imgui.ImVec2(75, 75))
 								imgui.EndTooltip()
 							end
-							imgui.SameLine()
+							imgui.SameLine(91)
 							if imgui.RadioButtonIntPtr(u8'White', boolhud.lid,2) then
 								mainIni.hud.lid = boolhud.lid[0]
 								inicfg.save(mainIni, directIni)
@@ -2398,17 +2436,7 @@ local newFrame = imgui.OnFrame(
 								imgui.Image(logo[2], imgui.ImVec2(75, 75))
 								imgui.EndTooltip()
 							end
-							imgui.SameLine()
-							if imgui.RadioButtonIntPtr(u8'Halloween', boolhud.lid,3) then
-								mainIni.hud.lid = boolhud.lid[0]
-								inicfg.save(mainIni, directIni)
-						 	end
-							 if imgui.IsItemHovered() then
-								imgui.BeginTooltip()
-								imgui.Image(logo[3], imgui.ImVec2(75, 75))
-								imgui.EndTooltip()
-							end
-							imgui.SameLine()
+							imgui.SameLine(172)
 							if imgui.RadioButtonIntPtr(u8'HiTech', boolhud.lid,4) then
 								mainIni.hud.lid = boolhud.lid[0]
 								inicfg.save(mainIni, directIni)
@@ -2416,6 +2444,15 @@ local newFrame = imgui.OnFrame(
 							if imgui.IsItemHovered() then
 								imgui.BeginTooltip()
 								imgui.Image(logo[4], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
+							if imgui.RadioButtonIntPtr(u8'Halloween', boolhud.lid,3) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+						 	end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[3], imgui.ImVec2(75, 75))
 								imgui.EndTooltip()
 							end
 							imgui.SameLine()
@@ -2429,17 +2466,17 @@ local newFrame = imgui.OnFrame(
 								imgui.EndTooltip()
 							end
 							imgui.Separator()
-							imgui.CenterTextColoredRGB("Ваше максимальное ХП:")
+							imgui.CenterTextColoredRGB(" Ваше максимальное ХП:")
 							if imgui.RadioButtonIntPtr(u8'100 HP', boolhud.maxhp,100) then
 								mainIni.hud.maxhp = boolhud.maxhp[0]
 								inicfg.save(mainIni, directIni)
 							end
-							imgui.SameLine()
+							imgui.SameLine(86)
 							if imgui.RadioButtonIntPtr(u8'130 HP', boolhud.maxhp,130) then
 								mainIni.hud.maxhp = boolhud.maxhp[0]
 								inicfg.save(mainIni, directIni)
 							end
-							imgui.SameLine()
+							imgui.SameLine(172)
 							if imgui.RadioButtonIntPtr(u8'160 HP', boolhud.maxhp,160) then
 								mainIni.hud.maxhp = boolhud.maxhp[0]
 								inicfg.save(mainIni, directIni)
@@ -2832,9 +2869,7 @@ local newFrame = imgui.OnFrame(
 				imgui.SetCursorPos(imgui.ImVec2(410,200));
 				imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.5, 0.5))
 				if imgui.Button(u8"LogVersion", imgui.ImVec2(100, 40)) then imgui.OpenPopup(u8'Логи') popupwindow.switch() end
-				imgui.PopStyleVar(1)
-				
-			
+				imgui.PopStyleVar(1)			
 
 				imgui.SetCursorPos(imgui.ImVec2(10.000000,265.500000));
 				imgui.Separator()
@@ -2843,29 +2878,7 @@ local newFrame = imgui.OnFrame(
 
 				imgui.SetCursorPos(imgui.ImVec2(25.000000,26.000000));
 				imgui.Link('https://vk.com/chapple', fa_icon.ICON_FA_VK, false, false) imgui.SameLine(60)
-				--imgui.SetCursorPos(imgui.ImVec2(32.000000,25.000000));
-				--[[imgui.TextQuestion("                                       ", u8"Нажмите, чтобы скопировать")
-				imgui.SetCursorPos(imgui.ImVec2(32.000000,25.000000));
-				imgui.Text(primer_text[1]) -- вывод копитекста
-				if imgui.IsItemClicked() then
-					imgui.LogToClipboard()
-					imgui.LogText(primer_text[1]) -- копирование копитекста
-					ezMessage("Успешно скопировано!")
-					imgui.LogFinish()
-				end]]
-
-				--imgui.SetCursorPos(imgui.ImVec2(12.500000,48.000000));
 				imgui.Link('https://t.me/CH4PPLE', fa_icon.ICON_FA_TELEGRAM_PLANE, false, false)
-				--imgui.SetCursorPos(imgui.ImVec2(32.000000,47.000000));
-				--[[imgui.TextQuestion("                                     ", u8"Нажмите, чтобы скопировать")
-				imgui.SetCursorPos(imgui.ImVec2(32.000000,47.000000));
-				imgui.Text(primer_text[2]) -- вывод копитекста
-				if imgui.IsItemClicked() then
-					imgui.LogToClipboard()
-					imgui.LogText(primer_text[2]) -- копирование копитекста
-					ezMessage("Успешно скопировано!")
-					imgui.LogFinish()
-				end]]
 				imgui.PopFont()
 				imgui.EndChild()
 
@@ -2918,14 +2931,17 @@ local newFrame = imgui.OnFrame(
 					imgui.TextColoredRGB("{FFA500}Новые команды.")
 					imgui.PopFont()
 					imgui.PushFont(smallfont)
-					imgui.TextColoredRGB("{E6E6FA}Это новые команды. Тут вы можете с ними ознакомиться.\n" .. 
+					imgui.TextColoredRGB(
 					'		{00BFFF}Время / погода:\n' ..
 					'			{E6E6FA}/st {FFD700}[0-23]{E6E6FA} - изменить время\n' ..
 					'			{E6E6FA}/sw {FFD700}[0-45]{E6E6FA} - изменить погоду\n' ..
 					'		{00BFFF}Прочее:\n' ..
 					'			{E6E6FA}/delltd - удаление всех текстдравов на экране\n' ..
 					'			{E6E6FA}/infoveh - показывает, открыта ли машина\n' ..
-					'			{E6E6FA}/сall {FFD700}[ID]{E6E6FA} - позвонить игроку по id')
+					'			{E6E6FA}/сall {FFD700}[ID]{E6E6FA} - позвонить игроку по id\n'..
+					'		{00BFFF}FPS UP:\n' ..
+					'			{E6E6FA}/invpl {FFD700}(ID){E6E6FA} - удаление всех игроков в зоне стрима. В ID можно вписать исключение.\n'..
+					'			{E6E6FA}/invveh {FFD700}(ID){E6E6FA} - удаление всех машин в зоне стрима. В ID можно вписать исключение.')
 					imgui.PopFont()
 					imgui.EndChild()
 
@@ -3416,6 +3432,20 @@ function playVolume(arg, state)
 	end
 end
 
+function removePlayer(id)
+    local bs = raknetNewBitStream()
+    raknetBitStreamWriteInt16(bs, id)
+    raknetEmulRpcReceiveBitStream(163, bs)
+    raknetDeleteBitStream(bs)
+end
+function hideCar(id)
+	local w = BitStreamIO.bs_write
+	local bs = raknetNewBitStream()
+	w.int16(bs, id)
+	raknetEmulRpcReceiveBitStream(165, bs)
+	raknetDeleteBitStream(bs)
+end
+
 function sampev.onServerMessage(color, text)
 	--if text:find(".+") then print(text) end
 	if features.autoid[0] == true then
@@ -3450,18 +3480,19 @@ function sampev.onServerMessage(color, text)
 		ezMessage('На это транспорте нет TwinTurbo.')
 		return false
 	end
-	if text:find('%[Информация%] %{FFFFFF%}Используйте курсор чтобы выбрать тип топлива и его кол%-%во') then
-		fillcar = true
-	end
 	if carfuncs.autofill[0] == true then
-		if text:find('Ваш транспорт заправлен.+') then
-			fillcar = false
-		elseif text:find('Ваш транспорт был заряжен.+') then
+		if text:find('Ваш транспорт был заряжен.+') then
 			electofill = false
 		end
 	end
+	if text:find(name..'%[%d+%] надел бронежилет') then
+		if boolwidget.show[0] and boolwidget.widget[0] then
+			timerStart = os.time()
+			timerEndTime = 60
+			timerState = true
+		end
+	end
 end
-callarg = 0
 
 function setTime(hours)
     memory.write(0xB70153, hours, 1, false)
@@ -3496,11 +3527,6 @@ function sampev.onShowTextDraw(id, data)
 			end
 		end
 	end
-
-	--[[if data.text:find('Played .+') then
-		data.text = "~n~"..data.text
-		return {id, data}
-	end]]
 	if data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK~n~/lock" or data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK~n~/lock" then
 		data.text = "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK"
 		return {id, data}
@@ -3534,32 +3560,15 @@ function sampev.onShowTextDraw(id, data)
 		--print("DATA: "..data.text)	
 		--print("POS_X: "..data.position.x)
 		--print("POS_Y: "..data.position.y)
-		if fillcar == true then
-			atfll = lua_thread.create_suspended(function()
-				if data.text:find("~w~This type of fuel ~r~ is not suitable~w~~n~ for your vehicles!") then
-					sampSendClickTextdraw(arrow_id)
-					prodaoilfill = false
-				else
-					prodaoilfill = true
-				end
-			end)
-			atfll:run()
-		end
 
 		if data.text == "ELECTRIC" then
 			electofill = true
-		end
-		if data.text == "DIESEL" or data.text == "A92" or data.text == "A95" or data.text == "A98" then
-			oilfill = true
 		end
 		if data.text == "$0" or data.text == "FREE" then
 			cost_id = id
 		end
 		if data.text == "FILL" then
 			fill_id = id
-		end
-		if data.text == "LD_BEAT:chit" and data.selectable == 1 then
-			arrow_id = id
 		end
 		if electofill == true then
 			atfll = lua_thread.create_suspended(function()
@@ -3570,19 +3579,6 @@ function sampev.onShowTextDraw(id, data)
 			end)
 			atfll:run()
 			electofill = false
-		end
-		if oilfill == true then
-			atfll = lua_thread.create_suspended(function()
-				wait(400)
-				if prodaoilfill == true then
-					sampSendClickTextdraw(cost_id)
-					wait(250)
-					sampSendClickTextdraw(fill_id)
-				end
-			end)
-			atfll:run()
-			oilfill = false
-			prodaoilfill = false	
 		end
 	end
 
@@ -3615,45 +3611,6 @@ function hungeranim()
 	end)
 	
 end
-
---[[function sampev.onDisplayGameText(style, time, text)
-	if boolhud.hud[0] then
-		if text:find('You are hungry!') or text:find('You are very hungry!') then
-			hungeranim()
-			return false
-		end
-	end
-
-	if carfuncs.autotwinturbo[0] then
-		if isCharInAnyCar(playerPed) then
-			if text:find('~n~~n~~n~~n~~n~~n~~n~~n~~w~Style: ~g~Comfort!') then
-				ezMessage("AutoTT: TwinTurbo включён.")
-				sampSendChat('/style')
-			end
-		end
-	end
-	if text:find('.+') then print(text) end
-	if features.correctdmg[0] then
-		if text:find('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed %d+ Sec.') then
-			dmgtime = text:match('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed (%d+) Sec.')
-			return {style, time, string.format(conv("~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~y~Осталось:~n~~w~%s"), get_clock(dmgtime))}
-		end
-	end
-		
-	if boolfixes.fixgps[0] == true then
-		if text:find("GPS: ON") then
-			return false
-		end
-	end
-
-	if text:find(".+ HP") or text:find(".+ H") then
-		return false
-	end
-
-	if text:find("~y~PAYDAY~n~Launcher.+") then
-		return false
-	end
-end]]
 
 function sampev.onPlaySound(id, pos)
 	if id == 17802 and features.kolokol[0] then
@@ -3769,6 +3726,7 @@ function getAmmoInClip()
 end
 
 function sampev.onShowDialog(id, style, title, button1, button2, text)
+	print('\nID: '..id..'\nSTYLE: '..style..'\nTITLE: '..title..'\nTEXT: '..text)
 	local servername = sampGetCurrentServerName()
 	if servername:find("Vice City") then
 		if text:find("{929290}Вы должны подтвердить свой PIN%-код к карточке.") then
@@ -3784,7 +3742,6 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 	end
 	if id == 15330 then
 		countdialog = countdialog + 1
-		--sampSendDialogResponse(15330, 0, nil, nil) 
 		if countdialog >= 2 then
 			sampSendChat("/mm")
 			fixxx = true
@@ -3795,15 +3752,6 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 		sampSendDialogResponse(722, 0 , 0 , -1) 
 		fixxx = false
 		return false
-	end
-	if id == 222 then
-    	fixcefbool = true
-		if boolwidget.show[0] and boolwidget.widget[0] then
-			boolwidget.show[0] = false
-		end
-		if boolhud.show[0] and boolhud.hud[0] then
-			boolhud.show[0] = false
-		end
 	end
 end
 
@@ -3820,8 +3768,44 @@ function ShowMessage(text, title, style)
     ffi.C.MessageBoxA(hwnd, text,  title, style and (style + 0x50000) or 0x50000)
 end
 
-function onReceivePacket(id)
-	--print(id)
+function onReceivePacket(id, bs)
+	if id == 220 then
+		raknetBitStreamIgnoreBits(bs, 8)
+        if (raknetBitStreamReadInt8(bs) == 17) then
+            raknetBitStreamIgnoreBits(bs, 32)
+            local str = raknetBitStreamReadString(bs, raknetBitStreamReadInt32(bs))
+            if (str:find('window%.executeEvent%(\'event.setActiveView\', \'%["ArizonaPass"%]\'%)')) or (str:find('window%.executeEvent%(\'event.setActiveView\', \'%["DonationShop"%]\'%)')) or (str:find('window%.executeEvent%(\'event.setActiveView\', \'%["ContainersAuction"%]\'%)')) or (str:find('vue%.set%(\'tuning\'%)')) then
+				fixcefbool = true
+				if boolwidget.show[0] and boolwidget.widget[0] then
+					boolwidget.show[0] = false
+				end
+				if boolhud.show[0] and boolhud.hud[0] then
+					boolhud.show[0] = false
+				end
+			end
+
+			if carfuncs.autofill[0] then
+				if (str:find('window%.executeEvent%(\'(.+)%\', \'(.+)\'%)')) then
+					local event, json = str:match('window%.executeEvent%(\'(.+)%\', \'(.+)\'%)')
+					local json = decodeJson(json or '[]')
+					if (event == 'event.gasstation.initializeFuelTypes') then 
+						for _, fuel in ipairs(json[1]) do
+							if (fuel.available == 1) then
+								fuelId = fuel.id
+							end
+						end
+					elseif (event == 'event.gasstation.initializeMaxLiters') then 
+						maxLiters = tonumber(json[1]) or 100
+					elseif (event == 'event.gasstation.initializeCurrentLiters') then 
+						currentLiters = tonumber(json[1]) or 50
+						purchaseFuel(fuelId, maxLiters - currentLiters)
+					end
+				end
+			end
+		end
+
+	end
+
     if id == 34 then
 		auth = true
 		if features.mac[0] then
@@ -3829,8 +3813,25 @@ function onReceivePacket(id)
 			bass.BASS_ChannelPlay(mac, false)	
 		end
     end
+	
 end
 
+function purchaseFuel(fuelIndex, fuelCount)
+    local str = ('purchaseFuel|%s|%s'):format(fuelIndex, fuelCount)
+    local bs = raknetNewBitStream()
+    raknetBitStreamWriteInt8(bs, 220) -- packet id
+    raknetBitStreamWriteInt8(bs, 18) -- packet type
+    raknetBitStreamWriteInt8(bs, #str) -- str len
+    raknetBitStreamWriteInt8(bs, 0)
+    raknetBitStreamWriteInt8(bs, 0)
+    raknetBitStreamWriteInt8(bs, 0)
+    raknetBitStreamWriteString(bs, str)
+    raknetBitStreamWriteInt32(bs, 1)
+	raknetBitStreamWriteInt8(bs, 0)
+	raknetBitStreamWriteInt8(bs, 0)
+    raknetSendBitStreamEx(bs, 1, 7, 1)
+    raknetDeleteBitStream(bs)
+end
 
 function time()
 	startTime = os.time()
@@ -3838,7 +3839,6 @@ function time()
     while true do
         wait(1000)
         nowTime = os.date("%H:%M:%S", os.time())
-		fps = ("%.0f"):format(memory.getfloat(0xB7CB50, true))
 		ping =  sampGetPlayerPing(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
 		if sampGetGamestate() == 3 then
 	        sesOnline[0] = sesOnline[0] + 1
@@ -3846,6 +3846,7 @@ function time()
 			connectingTime = 0
 			_, pid = sampGetPlayerIdByCharHandle(playerPed)
 			servonl = tostring(sampGetPlayerCount())
+			name = sampGetPlayerNickname(pid)
 	    else
 			pid = 0
 			servonl = 1
@@ -3928,7 +3929,7 @@ function carfunc()
     end
 end
 
-function famhide()
+function _rfunc()
 	while true do 
 		wait(20)
 		if hidefam[0] == true then
@@ -3938,6 +3939,23 @@ function famhide()
 					if text:find("Family") or text:find("Empire") or text:find("Squad") or text:find("Dynasty") or text:find("Corporation") or text:find("Crew") or text:find("Brotherhood") or text:find("Club") then
 					sampDestroy3dText(i)
 					end
+				end
+			end
+		end
+		if invpl then
+			for _, ped in ipairs(getAllChars()) do
+				if doesCharExist(ped) and ped ~= PLAYER_PED and select(2, sampGetPlayerIdByCharHandle(ped)) ~= tonumber(frid) then
+					removePlayer(select(2, sampGetPlayerIdByCharHandle(ped)))
+				end
+			end
+		end
+		if invveh then
+			local cars = getAllVehicles()
+			for i = 1, #cars do
+				local res, id = sampGetVehicleIdByCarHandle(cars[i])
+				local typecar = getCarModel(cars[i])
+				if res and cars[i] ~= 1 and typecar ~= tonumber(idveh) then
+					hideCar(id)
 				end
 			end
 		end
@@ -4202,17 +4220,6 @@ function apply_custom_style()
 	colors[clr.TextSelectedBg]       = ImVec4(0.26, 0.59, 0.98, 0.35)
 end
 
---[[
-    title - заголовок
-    var - переменная окна
-    stateButton - текст на кнопке "свернуть/развернуть" вкладки (используй nil если кнопка не нужна)
-    tabs - список вкладок
-    selected - выбранная вкладка
-    isOpened - статус (свернуто/развернуто)
-    sizeClosed - размер панели если свернуто
-    sizeOpened - размер панели если развернуто
-    windowFlags - флаги окна (так же как и в imgui.Begin())
-]]
 function imgui.BeginWin11Menu(title, var, stateButton, selected, isOpened, sizeClosed, sizeOpened, windowFlags)
     imgui.PushStyleVarVec2(imgui.StyleVar.WindowPadding, imgui.ImVec2(0, 0))
     imgui.Begin(title, var, imgui.WindowFlags.NoTitleBar + (windowFlags or 0))
@@ -4220,7 +4227,6 @@ function imgui.BeginWin11Menu(title, var, stateButton, selected, isOpened, sizeC
     local size = imgui.GetWindowSize()
     local pos = imgui.GetWindowPos()
     local dl = imgui.GetWindowDrawList()
-
     local tabSize = sizeClosed - 10
 
     imgui.SetCursorPos(imgui.ImVec2(size.x - tabSize + 5, 5))
@@ -4234,11 +4240,6 @@ function imgui.BeginWin11Menu(title, var, stateButton, selected, isOpened, sizeC
 	imgui.PopStyleColor(3)
 	imgui.PopFont()
 
-    --==[ MAIN BG ]==--
-   --[[ imgui.SetCursorPos(imgui.ImVec2(sizeClosed, sizeClosed))
-    local p = imgui.GetCursorScreenPos()
-    dl:AddRectFilled(p, imgui.ImVec2(p.x + size.x - sizeClosed, p.y + size.y - sizeClosed), imgui.GetColorU32Vec4(imgui.GetStyle().Colors[imgui.Col.ChildBg]), imgui.GetStyle().WindowRounding, 1 + 8)
-   ]]
     --==[ TITLEBAR ]==--
     imgui.SetCursorPos(imgui.ImVec2(0, 0))
     local p = imgui.GetCursorScreenPos()
@@ -4491,7 +4492,6 @@ function imgui.AnimProgressBar(label, int, func, duration,size, bgclolor, fillco
 		if timer >= 0.00 and timer <= duration then; local count = timer / (duration / 100); return from + (count * (to - from) / 100),timer,false
 		end; return (timer > duration) and to or from,timer,true
 	end
-		--if int > 100 then imgui.TextColored(imgui.ImVec4(1,0,0,0.7),'error func imgui.AnimProgressBar(*),int > 100') return end
 		if IMGUI_ANIM_PROGRESS_BAR == nil then IMGUI_ANIM_PROGRESS_BAR = {} end
 		if IMGUI_ANIM_PROGRESS_BAR ~= nil and IMGUI_ANIM_PROGRESS_BAR[label] == nil then
 			IMGUI_ANIM_PROGRESS_BAR[label] = {int = (int or 0),clock = 0}
