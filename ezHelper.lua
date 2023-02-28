@@ -680,7 +680,7 @@ function main()
 	spawn = true
 	auth = false
 	local lastver = update():getLastVersion()
-    ezMessage('Скрипт загружен. Версия: '..lastver)
+    ezMessage('Скрипт загружен. Версия: '..thisScript().version)
     if thisScript().version ~= lastver then
         ezMessage('Вышло обновление скрипта ('..thisScript().version..' -> '..lastver..')!')
 		updatewindow[0] = true
@@ -1702,17 +1702,17 @@ local updateFrame = imgui.OnFrame(
 			imgui.PopFont()
 			imgui.PushFont(smallfont)
 			imgui.PopFont()
-			imgui.BeginChild("##UpdateChild",imgui.ImVec2(300, 95), true)
+			imgui.BeginChild("##UpdateChild",imgui.ImVec2(302, 95), true)
 			imgui.PushFont(smallfont)
 			imgui.CenterTextColoredRGB('Что нового?')
 			imgui.WrappedTextRGB(utext)
 			imgui.PopFont()
 			imgui.EndChild()
 			imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.5, 0.5))
-			imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6 + 5), 130))
+			imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6 + 18), 130))
 			imgui.PushFont(mainfont)
 			if imgui.AnimatedButton(u8"Да", imgui.ImVec2(80, 35)) then updatewindow[0] = false update():download() end
-			imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6) + 88 + 5, 130))
+			imgui.SetCursorPos(imgui.ImVec2(((imgui.GetWindowWidth() + imgui.GetStyle().ItemSpacing.x) / 6) + 88 + 18, 130))
 			if imgui.AnimatedButton(u8"Нет", imgui.ImVec2(80, 35)) then updatewindow[0] = false end
 			imgui.PopFont()
 			imgui.PopStyleVar()
@@ -4475,7 +4475,7 @@ function imgui.AnimatedButton(label, size, speed, rounded)
     button.color.w = button.color.w + (button.hovered and 0.8 or -0.8)*t
     button.color.w = button.color.w < 0.2 and 0.2 or (button.color.w > 1 and 1 or button.color.w)
     color = imgui.GetStyle().Colors[imgui.Col.ButtonHovered]
-    color = imgui.GetColorU32Vec4(imgui.ImVec4(color.x, color.y, color.z, 0.2))
+    color = imgui.GetColorU32Vec4(imgui.ImVec4(color.x, color.y, color.z, 0.24))
     dl:AddRectFilled(p, imgui.ImVec2(p.x+size.x, p.y+size.y), color, rounded and imgui.GetStyle().FrameRounding or 0)
     dl:AddRect(p, imgui.ImVec2(p.x+size.x, p.y+size.y), imgui.GetColorU32Vec4(button.color), rounded and imgui.GetStyle().FrameRounding or 0)
     local align = imgui.GetStyle().ButtonTextAlign
