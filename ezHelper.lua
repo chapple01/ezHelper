@@ -1,10 +1,9 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.5.7")
+script_version("1.5.8")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
-require "lib.moonloader"
 
 	----===[[REQUIREMENTS]]===----
 local vkeys = require 'vkeys'
@@ -96,6 +95,7 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 10.12.2022 - 1.5.5 - Добавил AutoPin для Vice City, исправил баг с некликабельным инвентарём. Встречайте: PieBinder! (БЕТА). Исправил мелкие баги с интерфейсом.
 02.01.2023 - 1.5.6 - Убрал отображение количества попыток подключений к серверу, так как скрипт с ним не стабильно работал. Переименовал Fix WARZ на Fix CEF. Добавил новую икноку в RHUD.
 29.01.2023 - 1.5.7 - Откорректировал отображение меню RHUD. Исправил AutoFill под лаунчер (спасибо chapo). Добавил функцию удаление игроков/машин в зоне стрима. Исправил баг с лимитом денег в RHUD. Обновил Виджет, теперь в нём есть ещё более полезная информация! Оптимизировал функцию Fix CEF, теперь она срабатывает при появлении окон CEF, а не по триггерам по типу нажатой кнопки.
+28.02.2023 - 1.5.8 - Исправил баг с белыми квадратиками вместо шрифта, добавил новый логотип, PieBinder выходит из БЕТА версии. Оптимизировал код.
 ]]
 
 	-----===[[INIFILE]]===-----
@@ -221,31 +221,16 @@ wgname = getGameDirectory()..'\\moonloader\\config\\ezHelper\\widget.cfg'
 ecfg.update(widgetcfg, wgname)
 ecfg.save(wgname, widgetcfg)
 
-local piebindercfg = {
-	k1 = "", k2 = "", k3 = "", k4 = "", k5 = "",
-
-	s1 = "", s2 = "", s3 = "", s4 = "", s5 = "",
-	s6 = "", s7 = "", s8 = "", s9 = "", s10 = "",
-	s11 = "", s12 = "", s13 = "", s14 = "", s15 = "", 
-	s16 = "", s17 = "", s18 = "", s19 = "", s20 = "", 
-	s21 = "", s22 = "", s23 = "", s24 = "", s25 = "", 
-
-	t1 = "", t2 = "", t3 = "", t4 = "", t5 = "",
-	t6 = "", t7 = "", t8 = "", t9 = "", t10 = "",
-	t11 = "", t12 = "", t13 = "", t14 = "", t15 = "", 
-	t16 = "", t17 = "", t18 = "", t19 = "", t20 = "", 
-	t21 = "", t22 = "", t23 = "", t24 = "", t25 = "",
-	
-	kd1 = 1, kd2 = 1, kd3 = 1, kd4 = 1, kd5 = 1,
-	kd6 = 1, kd7 = 1, kd8 = 1, kd9 = 1, kd10 = 1,
-	kd11 = 1, kd12 = 1, kd13 = 1, kd14 = 1, kd15 = 1, 
-	kd16 = 1, kd17 = 1, kd18 = 1, kd19 = 1, kd20 = 1, 
-	kd21 = 1, kd22 = 1, kd23 = 1, kd24 = 1, kd25 = 1, 
+local pbcfg = {
+	category = {"", "", "", "", ""},
+	slot = {"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""},
+	text = {"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""},
+	cd = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 }
 
 piename = getGameDirectory()..'\\moonloader\\config\\ezHelper\\piebinder.cfg'
-ecfg.update(piebindercfg, piename)
-ecfg.save(piename, piebindercfg)
+ecfg.update(pbcfg, piename)
+ecfg.save(piename, pbcfg)
 
 
 	-----===[[IMGUI VARIABLES]]===-----
@@ -314,26 +299,31 @@ local piebool = {
 local piebinder = {
 	kn = 1,
 	sn = 1,
-	
-	k1 = new.char[20](u8(piebindercfg.k1)), k2 = new.char[20](u8(piebindercfg.k2)), k3 = new.char[20](u8(piebindercfg.k3)), k4 = new.char[20](u8(piebindercfg.k4)), k5 = new.char[20](u8(piebindercfg.k5)),
 
-	s1 = new.char[20](u8(piebindercfg.s1)), s2 = new.char[20](u8(piebindercfg.s2)), s3 = new.char[20](u8(piebindercfg.s3)), s4 = new.char[20](u8(piebindercfg.s4)),	s5 = new.char[20](u8(piebindercfg.s5)),
-	s6 = new.char[20](u8(piebindercfg.s6)), s7 = new.char[20](u8(piebindercfg.s7)), s8 = new.char[20](u8(piebindercfg.s8)), s9 = new.char[20](u8(piebindercfg.s9)), s10 = new.char[20](u8(piebindercfg.s10)),
-	s11 = new.char[20](u8(piebindercfg.s11)), s12 = new.char[20](u8(piebindercfg.s12)), s13 = new.char[20](u8(piebindercfg.s13)), s14 = new.char[20](u8(piebindercfg.s14)),	s15 = new.char[20](u8(piebindercfg.s15)),
-	s16 = new.char[20](u8(piebindercfg.s16)), s17 = new.char[20](u8(piebindercfg.s17)), s18 = new.char[20](u8(piebindercfg.s18)), s19 = new.char[20](u8(piebindercfg.s19)),	s20 = new.char[20](u8(piebindercfg.s20)),
-	s21 = new.char[20](u8(piebindercfg.s21)), s22 = new.char[20](u8(piebindercfg.s22)), s23 = new.char[20](u8(piebindercfg.s23)), s24 = new.char[20](u8(piebindercfg.s24)),	s25 = new.char[20](u8(piebindercfg.s25)),
-
-	t1 = new.char[10000](u8(piebindercfg.t1)), t2 = new.char[10000](u8(piebindercfg.t2)), t3 = new.char[10000](u8(piebindercfg.t3)), t4 = new.char[10000](u8(piebindercfg.t4)),	t5 = new.char[10000](u8(piebindercfg.t5)),
-	t6 = new.char[10000](u8(piebindercfg.t6)), t7 = new.char[10000](u8(piebindercfg.t7)), t8 = new.char[10000](u8(piebindercfg.t8)), t9 = new.char[10000](u8(piebindercfg.t9)), t10 = new.char[10000](u8(piebindercfg.t10)),
-	t11 = new.char[10000](u8(piebindercfg.t11)), t12 = new.char[10000](u8(piebindercfg.t12)), t13 = new.char[10000](u8(piebindercfg.t13)), t14 = new.char[10000](u8(piebindercfg.t14)),	t15 = new.char[10000](u8(piebindercfg.t15)),
-	t16 = new.char[10000](u8(piebindercfg.t16)), t17 = new.char[10000](u8(piebindercfg.t17)), t18 = new.char[10000](u8(piebindercfg.t18)), t19 = new.char[10000](u8(piebindercfg.t19)),	t20 = new.char[10000](u8(piebindercfg.t20)),
-	t21 = new.char[10000](u8(piebindercfg.t21)), t22 = new.char[10000](u8(piebindercfg.t22)), t23 = new.char[10000](u8(piebindercfg.t23)), t24 = new.char[10000](u8(piebindercfg.t24)),	t25 = new.char[10000](u8(piebindercfg.t25)),
-
-	kd1 = imgui.new.float(piebindercfg.kd1), kd2 = imgui.new.float(piebindercfg.kd2), kd3 = imgui.new.float(piebindercfg.kd3), kd4 = imgui.new.float(piebindercfg.kd4), kd5 = imgui.new.float(piebindercfg.kd5),
-	kd6 = imgui.new.float(piebindercfg.kd6), kd7 = imgui.new.float(piebindercfg.kd7), kd8 = imgui.new.float(piebindercfg.kd8), kd9 = imgui.new.float(piebindercfg.kd9), kd10 = imgui.new.float(piebindercfg.kd10),
-	kd11 = imgui.new.float(piebindercfg.kd11), kd12 = imgui.new.float(piebindercfg.kd12), kd13 = imgui.new.float(piebindercfg.kd13), kd14 = imgui.new.float(piebindercfg.kd14), kd15 = imgui.new.float(piebindercfg.kd15),
-	kd16 = imgui.new.float(piebindercfg.kd16), kd17 = imgui.new.float(piebindercfg.kd17), kd18 = imgui.new.float(piebindercfg.kd18), kd19 = imgui.new.float(piebindercfg.kd19), kd20 = imgui.new.float(piebindercfg.kd20),
-	kd21 = imgui.new.float(piebindercfg.kd21), kd22 = imgui.new.float(piebindercfg.kd22), kd23 = imgui.new.float(piebindercfg.kd23), kd24 = imgui.new.float(piebindercfg.kd24), kd25 = imgui.new.float(piebindercfg.kd25),
+	category = {
+		new.char[25](u8(pbcfg.category[1])), new.char[25](u8(pbcfg.category[2])), new.char[25](u8(pbcfg.category[3])), new.char[25](u8(pbcfg.category[4])), new.char[25](u8(pbcfg.category[5]))
+	},
+	slot = {
+		new.char[25](u8(pbcfg.slot[1])), new.char[25](u8(pbcfg.slot[2])), new.char[25](u8(pbcfg.slot[3])),new.char[25](u8(pbcfg.slot[4])), new.char[25](u8(pbcfg.slot[5])),
+		new.char[25](u8(pbcfg.slot[6])), new.char[25](u8(pbcfg.slot[7])), new.char[25](u8(pbcfg.slot[8])), new.char[25](u8(pbcfg.slot[9])), new.char[25](u8(pbcfg.slot[10])),
+		new.char[25](u8(pbcfg.slot[11])), new.char[25](u8(pbcfg.slot[12])), new.char[25](u8(pbcfg.slot[13])), new.char[25](u8(pbcfg.slot[14])), new.char[25](u8(pbcfg.slot[15])),
+		new.char[25](u8(pbcfg.slot[16])), new.char[25](u8(pbcfg.slot[17])), new.char[25](u8(pbcfg.slot[18])), new.char[25](u8(pbcfg.slot[19])),	new.char[25](u8(pbcfg.slot[20])),
+		new.char[25](u8(pbcfg.slot[21])), new.char[25](u8(pbcfg.slot[22])), new.char[25](u8(pbcfg.slot[23])), new.char[25](u8(pbcfg.slot[24])),	new.char[25](u8(pbcfg.slot[25])),
+	},
+	text = {
+		new.char[10000](u8(pbcfg.text[1])), new.char[10000](u8(pbcfg.text[2])), new.char[10000](u8(pbcfg.text[3])), new.char[10000](u8(pbcfg.text[4])),	new.char[10000](u8(pbcfg.text[5])),
+		new.char[10000](u8(pbcfg.text[6])), new.char[10000](u8(pbcfg.text[7])), new.char[10000](u8(pbcfg.text[8])), new.char[10000](u8(pbcfg.text[9])), new.char[10000](u8(pbcfg.text[10])),
+		new.char[10000](u8(pbcfg.text[11])), new.char[10000](u8(pbcfg.text[12])), new.char[10000](u8(pbcfg.text[13])), new.char[10000](u8(pbcfg.text[14])),	new.char[10000](u8(pbcfg.text[15])),
+		new.char[10000](u8(pbcfg.text[16])), new.char[10000](u8(pbcfg.text[17])), new.char[10000](u8(pbcfg.text[18])), new.char[10000](u8(pbcfg.text[19])),	new.char[10000](u8(pbcfg.text[20])),
+		new.char[10000](u8(pbcfg.text[21])), new.char[10000](u8(pbcfg.text[22])), new.char[10000](u8(pbcfg.text[23])), new.char[10000](u8(pbcfg.text[24])),	new.char[10000](u8(pbcfg.text[25])),
+	},
+	cd = {
+		new.float(pbcfg.cd[1]), new.float(pbcfg.cd[2]), new.float(pbcfg.cd[3]), new.float(pbcfg.cd[4]), new.float(pbcfg.cd[5]),
+		new.float(pbcfg.cd[6]), new.float(pbcfg.cd[7]), new.float(pbcfg.cd[8]), new.float(pbcfg.cd[9]), new.float(pbcfg.cd[10]),
+		new.float(pbcfg.cd[11]), new.float(pbcfg.cd[12]), new.float(pbcfg.cd[13]), new.float(pbcfg.cd[14]), new.float(pbcfg.cd[15]),
+		new.float(pbcfg.cd[16]), new.float(pbcfg.cd[17]), new.float(pbcfg.cd[18]), new.float(pbcfg.cd[19]), new.float(pbcfg.cd[20]),
+		new.float(pbcfg.cd[21]), new.float(pbcfg.cd[22]), new.float(pbcfg.cd[23]), new.float(pbcfg.cd[24]), new.float(pbcfg.cd[25]),
+	}
 }
 
 local features = {
@@ -378,10 +368,10 @@ local TimeWeather = {
 }
 
 local slider = {
-    hours = imgui.new.int(mainIni.TimeWeather.hours),
-    weather = imgui.new.int(mainIni.TimeWeather.weather),
-	fisheye = imgui.new.int(mainIni.features.fov),
-	strobespeed = imgui.new.int(mainIni.carfuncs.strobespeed),
+    hours = new.int(mainIni.TimeWeather.hours),
+    weather = new.int(mainIni.TimeWeather.weather),
+	fisheye = new.int(mainIni.features.fov),
+	strobespeed = new.int(mainIni.carfuncs.strobespeed),
 	kolvolume = new.int(mainIni.features.kolvolume)
 }
 
@@ -593,7 +583,8 @@ imgui.OnInitialize(function()
 	logo3 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\Halloween.png')
 	logo4 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\HiTech.png')
 	logo5 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\NewYear.png')
-	logo = {logo1, logo2, logo3, logo4, logo5}
+	logo6 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\saintV.png')
+	logo = {logo1, logo2, logo3, logo4, logo5, logo6}
 
 	xPD = imgui.CreateTextureFromFile(getWorkingDirectory() .. "\\resource\\ezHelper\\XPayDay.png")
 
@@ -633,13 +624,24 @@ imgui.OnInitialize(function()
 	hudfont7 = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/ezHelper/fonts/UniNeueHeavy.ttf', 19.0, nil, glyph_ranges) --24
 
 
-	imgui.GetIO().IniFilename = nil
-    local config6 = imgui.ImFontConfig()
-	iconRanges6 = imgui.new.ImWchar[3](faicons.min_range, faicons.max_range, 0)
-    config6.MergeMode = true
-    config6.PixelSnapH = true
+
+	local builder = imgui.ImFontGlyphRangesBuilder()
+    local config2 = imgui.ImFontConfig()
+    config2.MergeMode = true
+    config2.PixelSnapH = true
+    local list = {
+        "USER",
+        "WIFI",
+		"SHIELD_BLANK",
+		"MASK"
+    }
+    for _, b in ipairs(list) do
+        builder:AddText(faicons(b))
+    end
+    defaultGlyphRanges1 = imgui.ImVector_ImWchar()
+    builder:BuildRanges(defaultGlyphRanges1)
     mf6 = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 14.0, nil, glyph_ranges)
-    icon = imgui.GetIO().Fonts:AddFontFromMemoryCompressedBase85TTF(faicons.get_font_data_base85('solid'), 18, config6, iconRanges6)
+    icon = imgui.GetIO().Fonts:AddFontFromMemoryCompressedBase85TTF(faicons.get_font_data_base85('solid'), 18, config2, defaultGlyphRanges1[0].Data)
 end)
 
 local hun = 0
@@ -871,7 +873,7 @@ function main()
 		-----===[[CARTWEAKS]]===-----
 		if not boolfixes.launcher[0] then
 			if isKeyJustPressed(VK_L) and not sampIsChatInputActive() and not sampIsDialogActive() then
-				sampSendChat("/lock") --23486046 = цвет маски
+				sampSendChat("/lock")
 			end	
 			if isKeyJustPressed(VK_K) and not sampIsChatInputActive() and not sampIsDialogActive() then
 				sampSendChat("/key")
@@ -1229,7 +1231,11 @@ local hudFrame = imgui.OnFrame(
 				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.2, 0.2, 0.2, 0))
 				imgui.Begin('##1', boolhud.show, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
 				DL:AddImage(slogo, imgui.ImVec2(sizeX / 1.069, 17), imgui.ImVec2(sizeX / 1.069 + 125, 17 + 54))
-				DL:AddImage(logo[boolhud.lid[0]], imgui.ImVec2(sizeX / 1.1745, 16), imgui.ImVec2(sizeX / 1.1745 + 50, 16 + 50))
+				if boolhud.lid[0] >= 1 and boolhud.lid[0] <= 4 then
+					DL:AddImage(logo[boolhud.lid[0]], imgui.ImVec2(sizeX / 1.1745, 16), imgui.ImVec2(sizeX / 1.1745 + 50, 16 + 50))
+				else
+					DL:AddImage(logo[boolhud.lid[0]], imgui.ImVec2(sizeX / 1.1765, 16), imgui.ImVec2(sizeX / 1.1765 + 55, 16 + 55))
+				end
 				local xpdint = sampGetCurrentServerName():match("%d")
 				if xpdint ~= nil then
 					imgui.PushFont(hudfont7)
@@ -1558,6 +1564,7 @@ local widgetFrame = imgui.OnFrame(
 			
 			if piebool.piemenu[0] then
 				if imgui.IsMouseClicked(2) then imgui.OpenPopup('PieMenu') end
+				imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.25, 0.25, 0.25, 0.8))
 					if pie.BeginPiePopup('PieMenu', 2) then
 					imgui.PushFont(piefont)
 					if piebool.domkrat[0] or piebool.chargecar[0] or piebool.fillcar[0] or piebool.repcar[0] then
@@ -1645,207 +1652,36 @@ local widgetFrame = imgui.OnFrame(
 							pie.EndPieMenu()
 						end
 					end
-					if #ffi.string(piebinder.k1) > 0 then
-						if pie.BeginPieMenu(fa.ICON_FA_STAR..ffi.string(piebinder.k1)) then
-							if #ffi.string(piebinder.s1) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s1)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t1:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd1[0] * 1000)
+					for c = 1, 5 do
+						if #ffi.string(piebinder.category[c]) > 0 then
+							if pie.BeginPieMenu(fa.ICON_FA_STAR..ffi.string(piebinder.category[c])) then
+								for i = 1, 25 do
+									if #ffi.string(piebinder.slot[i]) > 0 then
+										if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.slot[i])) then
+											bindplay = true	
+											if BIND_THREAD then	
+												BIND_THREAD:terminate()
 											end
+													
+											BIND_THREAD = lua_thread.create(function()
+												for bp in pbcfg.text[i]:gmatch('[^~]+') do
+													if bindplay then
+														sampProcessChatInput(tostring(bp))
+														wait(piebinder.cd[i][0] * 1000)
+													end
+												end
+												bindplay = false
+											end)
 										end
-										bindplay = false
-									end)
-								end
-							end
-
-							if #ffi.string(piebinder.s2) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s2)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
 									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t2:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd2[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
 								end
+								pie.EndPieMenu()
 							end
-
-							if #ffi.string(piebinder.s3) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s3)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t3:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd3[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
-								end
-							end
-
-							if #ffi.string(piebinder.s4) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s4)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t4:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd4[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
-								end
-							end
-
-							if #ffi.string(piebinder.s5) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s5)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t5:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd5[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
-								end
-							end
-							pie.EndPieMenu()
-						end
-					end
-
-					if #ffi.string(piebinder.k2) > 0 then
-						if pie.BeginPieMenu(fa.ICON_FA_STAR..ffi.string(piebinder.k2)) then
-							if #ffi.string(piebinder.s6) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s6)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t6:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd6[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
-								end
-							end
-
-							if #ffi.string(piebinder.s7) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s7)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t7:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd7[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
-								end
-							end
-
-							if #ffi.string(piebinder.s8) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s8)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t8:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd8[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
-								end
-							end
-
-							if #ffi.string(piebinder.s9) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s9)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t9:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd9[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
-								end
-							end
-
-							if #ffi.string(piebinder.s10) > 0 then
-								if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.s10)) then
-									bindplay = true	
-									if BIND_THREAD then	
-										BIND_THREAD:terminate()
-									end
-											
-									BIND_THREAD = lua_thread.create(function()
-										for bp in piebindercfg.t10:gmatch('[^~]+') do
-											if bindplay then
-												sampProcessChatInput(tostring(bp))
-												wait(piebinder.kd10[0] * 1000)
-											end
-										end
-										bindplay = false
-									end)
-								end
-							end
-							pie.EndPieMenu()
 						end
 					end
 					pie.EndPiePopup()
 					imgui.PopFont()
+					imgui.PopStyleColor()
 				end
 			end
 			imgui.PopStyleColor()
@@ -2095,7 +1931,7 @@ local newFrame = imgui.OnFrame(
 						mainIni.features.correctdmg = features.correctdmg[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.ezHint('{FF0000}[NEW]{FFFFFF} Корректирует время в деморгане по типу Ч:М:С.',
+					imgui.ezHint('Корректирует время в деморгане по типу Ч:М:С.',
 					hpfont, mainfont, 14.000000, 71.000000)
 
 					imgui.SetCursorPos(imgui.ImVec2(30.000000,95.000000));
@@ -2465,6 +2301,16 @@ local newFrame = imgui.OnFrame(
 								imgui.Image(logo[5], imgui.ImVec2(75, 75))
 								imgui.EndTooltip()
 							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'SaintValentine', boolhud.lid,6) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[6], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
 							imgui.Separator()
 							imgui.CenterTextColoredRGB(" Ваше максимальное ХП:")
 							if imgui.RadioButtonIntPtr(u8'100 HP', boolhud.maxhp,100) then
@@ -2525,7 +2371,7 @@ local newFrame = imgui.OnFrame(
 						mainIni.features.mac = features.mac[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.ezHint('{FF0000}[NEW]{FFFFFF} MAC - Music After Connected.\n'..
+					imgui.ezHint('MAC - Music After Connected.\n'..
 					'Включает старую музыку, после подключения к серверу.',
 					hpfont, mainfont, 120.000000, 46.000000)
 
@@ -2534,7 +2380,7 @@ local newFrame = imgui.OnFrame(
 						mainIni.features.kolokol = features.kolokol[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.ezHint('{FF0000}[NEW]{FFFFFF} CSK - Custom Sound Kolokol.\n'..
+					imgui.ezHint('CSK - Custom Sound Kolokol.\n'..
 					'Заменяет стандартный звук колокольчика на кастомный.',
 					hpfont, mainfont, 120.000000, 71.000000)
 					
@@ -3157,232 +3003,105 @@ end
 
 function piemenulist()
 	imgui.BeginChild("pm",imgui.ImVec2(529.5, 330.5), false)
-	imgui.PushFont(smallfont)
-	imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.18, 0.18, 0.18, 0.75))
-		imgui.BeginChild("pm1",imgui.ImVec2(95, 325), true)
-		imgui.SetCursorPos(imgui.ImVec2(0, 5))
-		if imgui.Button("##k1", imgui.ImVec2(100, 25)) then
-			piebinder.kn = 1
-			piebinder.sn = 1
+		imgui.PushFont(smallfont)
+		imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.18, 0.18, 0.18, 0.75))
+			imgui.BeginChild("pm1",imgui.ImVec2(95, 325), true)
+			for c = 1, 5 do
+				imgui.SetCursorPos(imgui.ImVec2(0, -20 + (c * 25)))
+				if imgui.Button("##category"..c, imgui.ImVec2(100, 25)) then
+					piebinder.kn = c
+					piebinder.sn = 1 + ((c - 1) * 5)
+				end
+				imgui.SetCursorPos(imgui.ImVec2(8, -15 + (c * 25)))
+				if ffi.string(piebinder.category[c]) == "" then imgui.TextColoredRGB("{FFFFFF}"..c.." {00FF00}Категория") else imgui.TextColoredRGB(c..". "..u8:decode(ffi.string(piebinder.category[c]))) end
+			end
+			imgui.EndChild()
+		imgui.SameLine()
+		
+		if piebinder.kn == 1 then
+			imgui.BeginChild("pm2",imgui.ImVec2(90, 325), true)
+			for i = 1, 5 do
+				imgui.SetCursorPos(imgui.ImVec2(0, -20 + (i * 25)))
+				if imgui.Button("##slot"..i, imgui.ImVec2(100, 25)) then
+					piebinder.sn = i
+				end
+				imgui.SetCursorPos(imgui.ImVec2(8, -15 + (i * 25)))
+				if ffi.string(piebinder.slot[i]) == "" then imgui.TextColoredRGB("{FFFFFF}"..i..". {00FF00}Слот") else imgui.TextColoredRGB(u8:decode(ffi.string(piebinder.slot[i]))) end
+			end
+			imgui.EndChild()
 		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 10))
-		if ffi.string(piebinder.k1) == "" then imgui.TextColoredRGB("{FFFFFF}1. {00FF00}Категория") else imgui.TextColoredRGB("1. "..u8:decode(ffi.string(piebinder.k1))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 30))
-		if imgui.Button("##k2", imgui.ImVec2(100, 25)) then
-			piebinder.kn = 2
-			piebinder.sn = 6
+		if piebinder.kn == 2 then
+			imgui.BeginChild("pm2",imgui.ImVec2(90, 325), true)
+			for i = 6, 10 do
+				imgui.SetCursorPos(imgui.ImVec2(0, -20 + (i - 5) * 25))
+				if imgui.Button("##slot"..i, imgui.ImVec2(100, 25)) then
+					piebinder.sn = i
+				end
+				imgui.SetCursorPos(imgui.ImVec2(8, -15 + (i - 5) * 25))
+				if ffi.string(piebinder.slot[i]) == "" then imgui.TextColoredRGB("{FFFFFF}"..i..". {00FF00}Слот") else imgui.TextColoredRGB(u8:decode(ffi.string(piebinder.slot[i]))) end
+			end
+			imgui.EndChild()
 		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 35))
-		if ffi.string(piebinder.k2) == "" then imgui.TextColoredRGB("{FFFFFF}2. {00FF00}Категория") else imgui.TextColoredRGB("2. "..u8:decode(ffi.string(piebinder.k2))) end
-		imgui.EndChild()
-
-	imgui.SameLine()
-	if piebinder.kn == 1 then
-		imgui.BeginChild("pm2",imgui.ImVec2(90, 325), true)
-		imgui.SetCursorPos(imgui.ImVec2(0, 5))
-		if imgui.Button("##s1", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 1
+		if piebinder.kn == 3 then
+			imgui.BeginChild("pm2",imgui.ImVec2(90, 325), true)
+			for i = 11, 15 do
+				imgui.SetCursorPos(imgui.ImVec2(0, -20 + (i - 10) * 25))
+				if imgui.Button("##slot"..i, imgui.ImVec2(100, 25)) then
+					piebinder.sn = i
+				end
+				imgui.SetCursorPos(imgui.ImVec2(8, -15 + (i - 10) * 25))
+				if ffi.string(piebinder.slot[i]) == "" then imgui.TextColoredRGB("{FFFFFF}"..i..". {00FF00}Слот") else imgui.TextColoredRGB(u8:decode(ffi.string(piebinder.slot[i]))) end
+			end
+			imgui.EndChild()
 		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 10))
-		if ffi.string(piebinder.s1) == "" then imgui.TextColoredRGB("{FFFFFF}1. {00FF00}Слот") else imgui.TextColoredRGB("1. "..u8:decode(ffi.string(piebinder.s1))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 30))
-		if imgui.Button("##s2", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 2
+		if piebinder.kn == 4 then
+			imgui.BeginChild("pm2",imgui.ImVec2(90, 325), true)
+			for i = 16, 20 do
+				imgui.SetCursorPos(imgui.ImVec2(0, -20 + (i - 15) * 25))
+				if imgui.Button("##slot"..i, imgui.ImVec2(100, 25)) then
+					piebinder.sn = i
+				end
+				imgui.SetCursorPos(imgui.ImVec2(8, -15 + (i - 15) * 25))
+				if ffi.string(piebinder.slot[i]) == "" then imgui.TextColoredRGB("{FFFFFF}"..i..". {00FF00}Слот") else imgui.TextColoredRGB(u8:decode(ffi.string(piebinder.slot[i]))) end
+			end
+			imgui.EndChild()
 		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 35))
-		if ffi.string(piebinder.s2) == "" then imgui.TextColoredRGB("{FFFFFF}2. {00FF00}Слот") else imgui.TextColoredRGB("2. "..u8:decode(ffi.string(piebinder.s2))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 55))
-		if imgui.Button("##s3", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 3
+		if piebinder.kn == 5 then
+			imgui.BeginChild("pm2",imgui.ImVec2(90, 325), true)
+			for i = 21, 25 do
+				imgui.SetCursorPos(imgui.ImVec2(0, -20 + (i - 20) * 25))
+				if imgui.Button("##slot"..i, imgui.ImVec2(100, 25)) then
+					piebinder.sn = i
+				end
+				imgui.SetCursorPos(imgui.ImVec2(8, -15 + (i - 20) * 25))
+				if ffi.string(piebinder.slot[i]) == "" then imgui.TextColoredRGB("{FFFFFF}"..i..". {00FF00}Слот") else imgui.TextColoredRGB(u8:decode(ffi.string(piebinder.slot[i]))) end
+			end
+			imgui.EndChild()
 		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 60))
-		if ffi.string(piebinder.s3) == "" then imgui.TextColoredRGB("{FFFFFF}3. {00FF00}Слот") else imgui.TextColoredRGB("3. "..u8:decode(ffi.string(piebinder.s3))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 80))
-		if imgui.Button("##s4", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 4
-		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 85))
-		if ffi.string(piebinder.s4) == "" then imgui.TextColoredRGB("{FFFFFF}4. {00FF00}Слот") else imgui.TextColoredRGB("4. "..u8:decode(ffi.string(piebinder.s4))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 105))
-		if imgui.Button("##s5", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 5
-		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 110))
-		if ffi.string(piebinder.s5) == "" then imgui.TextColoredRGB("{FFFFFF}5. {00FF00}Слот") else imgui.TextColoredRGB("5. "..u8:decode(ffi.string(piebinder.s5))) end
-		imgui.EndChild()
-	end
-
-	if piebinder.kn == 2 then
-		imgui.BeginChild("pm2",imgui.ImVec2(90, 325), true)
-		imgui.SetCursorPos(imgui.ImVec2(0, 5))
-		if imgui.Button("##s6", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 6
-		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 10))
-		if ffi.string(piebinder.s6) == "" then imgui.TextColoredRGB("{FFFFFF}6. {00FF00}Слот") else imgui.TextColoredRGB("6. "..u8:decode(ffi.string(piebinder.s6))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 30))
-		if imgui.Button("##s7", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 7
-		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 35))
-		if ffi.string(piebinder.s7) == "" then imgui.TextColoredRGB("{FFFFFF}7. {00FF00}Слот") else imgui.TextColoredRGB("7. "..u8:decode(ffi.string(piebinder.s7))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 55))
-		if imgui.Button("##s8", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 8
-		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 60))
-		if ffi.string(piebinder.s8) == "" then imgui.TextColoredRGB("{FFFFFF}8. {00FF00}Слот") else imgui.TextColoredRGB("8. "..u8:decode(ffi.string(piebinder.s8))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 80))
-		if imgui.Button("##s9", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 9
-		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 85))
-		if ffi.string(piebinder.s9) == "" then imgui.TextColoredRGB("{FFFFFF}9. {00FF00}Слот") else imgui.TextColoredRGB("9. "..u8:decode(ffi.string(piebinder.s9))) end
-
-		imgui.SetCursorPos(imgui.ImVec2(0, 105))
-		if imgui.Button("##s10", imgui.ImVec2(100, 25)) then
-			piebinder.sn = 10
-		end
-		imgui.SetCursorPos(imgui.ImVec2(8, 110))
-		if ffi.string(piebinder.s10) == "" then imgui.TextColoredRGB("{FFFFFF}10. {00FF00}Слот") else imgui.TextColoredRGB("10. "..u8:decode(ffi.string(piebinder.s10))) end
-		imgui.EndChild()
-	end
-	imgui.SameLine()
+		imgui.SameLine()
 
 		imgui.BeginChild("pm3",imgui.ImVec2(325, 325), true) 
 		imgui.TextColoredRGB("Имя категории:") imgui.SameLine(110) imgui.TextColoredRGB("Имя слота:") imgui.SameLine(220) imgui.TextColoredRGB("Задержка:")
 		imgui.PushItemWidth(100)
-		if piebinder.kn == 1 and piebinder.sn == 1 then
-			local refresh_text = ffi.string(piebinder.t1):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t1:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t1, u8(wrappedtext))
-			if imgui.InputText("##k1", piebinder.k1, ffi.sizeof(piebinder.k1)) then piebindercfg.k1 = u8:decode(ffi.string(piebinder.k1)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s1", piebinder.s1, ffi.sizeof(piebinder.s1)) then piebindercfg.s1 = u8:decode(ffi.string(piebinder.s1)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt1", piebinder.kd1, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd1 = piebinder.kd1[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd1[0] <= 0.5 then piebinder.kd1[0] = 1.0 end
-			if piebinder.kd1[0] >= 15.5 then piebinder.kd1[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t1, ffi.sizeof(piebinder.t1), imgui.ImVec2(-1, 250)) then piebindercfg.t1 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
+		for i = 1, 25 do
+			for c = 1, 5 do
+				if piebinder.kn == c and piebinder.sn == i then
+					local refresh_text = ffi.string(piebinder.text[i]):gsub("\n", "~")
+					local wrappedtext = pbcfg.text[i]:gsub('~', '\n')
+					imgui.StrCopy(piebinder.text[i], u8(wrappedtext))
+					if imgui.InputText("##category"..c, piebinder.category[c], ffi.sizeof(piebinder.category[c])) then pbcfg.category[c] = u8:decode(ffi.string(piebinder.category[c])) ecfg.save(piename, pbcfg) end imgui.SameLine(110)
+					if imgui.InputText("##slot"..i, piebinder.slot[i], ffi.sizeof(piebinder.slot[i])) then pbcfg.slot[i] = u8:decode(ffi.string(piebinder.slot[i])) ecfg.save(piename, pbcfg) end imgui.SameLine(220)
+					if imgui.InputFloat("##cd"..i, piebinder.cd[i], 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then
+						if piebinder.cd[i][0] <= 0.5 then piebinder.cd[i][0] = 1.0 end
+						if piebinder.cd[i][0] >= 15.5 then piebinder.cd[i][0] = 15.0 end
+						pbcfg.cd[i] = piebinder.cd[i][0]
+						ecfg.save(piename, pbcfg)
+					end
+					imgui.TextColoredRGB("Текст:")
+					if imgui.InputTextMultiline("##text"..i, piebinder.text[i], ffi.sizeof(piebinder.text[i]), imgui.ImVec2(-1, 250)) then pbcfg.text[i] = u8:decode(refresh_text) ecfg.save(piename, pbcfg) end
+				end
+			end
 		end
-		if piebinder.kn == 1 and piebinder.sn == 2 then
-			local refresh_text = ffi.string(piebinder.t2):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t2:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t2, u8(wrappedtext))
-			if imgui.InputText("##k1", piebinder.k1, ffi.sizeof(piebinder.k1)) then piebindercfg.k1 = u8:decode(ffi.string(piebinder.k1)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s2", piebinder.s2, ffi.sizeof(piebinder.s2)) then piebindercfg.s2 = u8:decode(ffi.string(piebinder.s2)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt2", piebinder.kd2, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd2 = piebinder.kd2[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd2[0] <= 0.5 then piebinder.kd2[0] = 1.0 end
-			if piebinder.kd2[0] >= 15.5 then piebinder.kd2[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t2, ffi.sizeof(piebinder.t2), imgui.ImVec2(-1, 250)) then piebindercfg.t2 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-		if piebinder.kn == 1 and piebinder.sn == 3 then
-			local refresh_text = ffi.string(piebinder.t3):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t3:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t3, u8(wrappedtext))
-			if imgui.InputText("##k1", piebinder.k1, ffi.sizeof(piebinder.k1)) then piebindercfg.k1 = u8:decode(ffi.string(piebinder.k1)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s3", piebinder.s3, ffi.sizeof(piebinder.s3)) then piebindercfg.s3 = u8:decode(ffi.string(piebinder.s3)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt3", piebinder.kd3, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd3 = piebinder.kd3[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd3[0] <= 0.5 then piebinder.kd3[0] = 1.0 end
-			if piebinder.kd3[0] >= 15.5 then piebinder.kd3[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t3, ffi.sizeof(piebinder.t3), imgui.ImVec2(-1, 250)) then piebindercfg.t3 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-		if piebinder.kn == 1 and piebinder.sn == 4 then
-			local refresh_text = ffi.string(piebinder.t4):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t4:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t4, u8(wrappedtext))
-			if imgui.InputText("##k1", piebinder.k1, ffi.sizeof(piebinder.k1)) then piebindercfg.k1 = u8:decode(ffi.string(piebinder.k1)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s4", piebinder.s4, ffi.sizeof(piebinder.s4)) then piebindercfg.s4 = u8:decode(ffi.string(piebinder.s4)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt4", piebinder.kd4, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd4 = piebinder.kd4[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd4[0] <= 0.5 then piebinder.kd4[0] = 1.0 end
-			if piebinder.kd4[0] >= 15.5 then piebinder.kd4[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t4, ffi.sizeof(piebinder.t4), imgui.ImVec2(-1, 250)) then piebindercfg.t4 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-		if piebinder.kn == 1 and piebinder.sn == 5 then
-			local refresh_text = ffi.string(piebinder.t5):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t5:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t5, u8(wrappedtext))
-			if imgui.InputText("##k1", piebinder.k1, ffi.sizeof(piebinder.k1)) then piebindercfg.k1 = u8:decode(ffi.string(piebinder.k1)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s5", piebinder.s5, ffi.sizeof(piebinder.s5)) then piebindercfg.s5 = u8:decode(ffi.string(piebinder.s5)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt5", piebinder.kd5, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd5 = piebinder.kd5[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd5[0] <= 0.5 then piebinder.kd5[0] = 1.0 end
-			if piebinder.kd5[0] >= 15.5 then piebinder.kd5[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t5, ffi.sizeof(piebinder.t5), imgui.ImVec2(-1, 250)) then piebindercfg.t5 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-
-
-		if piebinder.kn == 2 and piebinder.sn == 6 then
-			local refresh_text = ffi.string(piebinder.t6):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t6:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t6, u8(wrappedtext))
-			if imgui.InputText("##k2", piebinder.k2, ffi.sizeof(piebinder.k2)) then piebindercfg.k2 = u8:decode(ffi.string(piebinder.k2)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s6", piebinder.s6, ffi.sizeof(piebinder.s6)) then piebindercfg.s6 = u8:decode(ffi.string(piebinder.s6)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt6", piebinder.kd6, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd6 = piebinder.kd6[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd6[0] <= 0.5 then piebinder.kd6[0] = 1.0 end
-			if piebinder.kd6[0] >= 15.5 then piebinder.kd6[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t6, ffi.sizeof(piebinder.t6), imgui.ImVec2(-1, 250)) then piebindercfg.t6 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-		if piebinder.kn == 2 and piebinder.sn == 7 then
-			local refresh_text = ffi.string(piebinder.t7):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t7:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t7, u8(wrappedtext))
-			if imgui.InputText("##k2", piebinder.k2, ffi.sizeof(piebinder.k2)) then piebindercfg.k2 = u8:decode(ffi.string(piebinder.k2)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s7", piebinder.s7, ffi.sizeof(piebinder.s7)) then piebindercfg.s7 = u8:decode(ffi.string(piebinder.s7)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt7", piebinder.kd7, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd7 = piebinder.kd7[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd7[0] <= 0.5 then piebinder.kd7[0] = 1.0 end
-			if piebinder.kd7[0] >= 15.5 then piebinder.kd7[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t7, ffi.sizeof(piebinder.t7), imgui.ImVec2(-1, 250)) then piebindercfg.t7 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-		if piebinder.kn == 2 and piebinder.sn == 8 then
-			local refresh_text = ffi.string(piebinder.t8):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t8:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t8, u8(wrappedtext))
-			if imgui.InputText("##k2", piebinder.k2, ffi.sizeof(piebinder.k2)) then piebindercfg.k2 = u8:decode(ffi.string(piebinder.k2)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s8", piebinder.s8, ffi.sizeof(piebinder.s8)) then piebindercfg.s8 = u8:decode(ffi.string(piebinder.s8)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt8", piebinder.kd8, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd8 = piebinder.kd8[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd8[0] <= 0.5 then piebinder.kd8[0] = 1.0 end
-			if piebinder.kd8[0] >= 15.5 then piebinder.kd8[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t8, ffi.sizeof(piebinder.t8), imgui.ImVec2(-1, 250)) then piebindercfg.t8 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-		if piebinder.kn == 2 and piebinder.sn == 9 then
-			local refresh_text = ffi.string(piebinder.t9):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t9:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t9, u8(wrappedtext))
-			if imgui.InputText("##k2", piebinder.k2, ffi.sizeof(piebinder.k2)) then piebindercfg.k2 = u8:decode(ffi.string(piebinder.k2)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s9", piebinder.s9, ffi.sizeof(piebinder.s9)) then piebindercfg.s9 = u8:decode(ffi.string(piebinder.s9)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt9", piebinder.kd9, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd9 = piebinder.kd9[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd9[0] <= 0.5 then piebinder.kd9[0] = 1.0 end
-			if piebinder.kd9[0] >= 15.5 then piebinder.kd9[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t9, ffi.sizeof(piebinder.t9), imgui.ImVec2(-1, 250)) then piebindercfg.t9 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-		if piebinder.kn == 2 and piebinder.sn == 10 then
-			local refresh_text = ffi.string(piebinder.t10):gsub("\n", "~")
-			local wrappedtext = piebindercfg.t10:gsub('~', '\n')
-			imgui.StrCopy(piebinder.t10, u8(wrappedtext))
-			if imgui.InputText("##k2", piebinder.k2, ffi.sizeof(piebinder.k2)) then piebindercfg.k2 = u8:decode(ffi.string(piebinder.k2)) ecfg.save(piename, piebindercfg) end imgui.SameLine(110)
-			if imgui.InputText("##s10", piebinder.s10, ffi.sizeof(piebinder.s10)) then piebindercfg.s10 = u8:decode(ffi.string(piebinder.s10)) ecfg.save(piename, piebindercfg) end imgui.SameLine(220)
-			if imgui.InputFloat("##kdt10", piebinder.kd10, 0.5, 1.0, "%.1f", imgui.CharsNoBlank) then piebindercfg.kd10 = piebinder.kd10[0] ecfg.save(piename, piebindercfg) end
-			if piebinder.kd10[0] <= 0.5 then piebinder.kd10[0] = 1.0 end
-			if piebinder.kd10[0] >= 15.5 then piebinder.kd10[0] = 15.0 end
-			imgui.TextColoredRGB("Текст:")
-			if imgui.InputTextMultiline("##EditMultiline", piebinder.t10, ffi.sizeof(piebinder.t10), imgui.ImVec2(-1, 250)) then piebindercfg.t10 = u8:decode(refresh_text) ecfg.save(piename, piebindercfg) end
-		end
-
 		imgui.PopItemWidth()
 		imgui.EndChild()
 	
@@ -3448,6 +3167,9 @@ end
 
 function sampev.onServerMessage(color, text)
 	--if text:find(".+") then print(text) end
+	if text:find('Увы%, вам не удалось улучшить предмет.+') then
+		sampSendClickTextdraw(2078)
+	end
 	if features.autoid[0] == true then
 		if text:find('Вы успешно начали погоню за игроком .+') then
 			namePur = text:match('Вы успешно начали погоню за игроком (%w+_?%w+)')
@@ -3673,11 +3395,6 @@ function applySampfuncsPatch()
     end
 end
 
-function drawBar(posX, posY, sizeX, sizeY, color1, color2, borderThickness, font, value)
-	renderDrawBoxWithBorder(posX, posY, sizeX, sizeY, color2, borderThickness, 0xFF000000)
-	renderDrawBox(posX + borderThickness, posY + borderThickness, sizeX / 100 * value - (borderThickness * 2), sizeY - (2 * borderThickness), color1)
-end
-
 function onWindowMessage(msg, wparam, lparam)
     if msg == 0x100 or msg == 0x101 then
         if (wparam == VK_ESCAPE and rwindow.state) and not isPauseMenuActive() and not inputblock then
@@ -3701,15 +3418,6 @@ function onWindowMessage(msg, wparam, lparam)
     end
 end
 
-function getSprintLocalPlayer() -- Original: https://blast.hk/threads/13380/post-192584
-	local float = memory.getfloat(0xB7CDB4)
-	if float > 0 then
-		return math.floor(float/31.47000244)
-	else
-		return 0
-	end
-end
-
 function sampev.onSetPlayerDrunk(drunkLevel)
 	if boolhud.adrunk[0] then
     	return {1}
@@ -3726,7 +3434,7 @@ function getAmmoInClip()
 end
 
 function sampev.onShowDialog(id, style, title, button1, button2, text)
-	--print('\nID: '..id..'\nSTYLE: '..style..'\nTITLE: '..title..'\nTEXT: '..text)
+	--print(string.format('ID: %s\nTITLE: %s\nTEXT: %s', id, title, text))
 	local servername = sampGetCurrentServerName()
 	if servername:find("Vice City") then
 		if text:find("{929290}Вы должны подтвердить свой PIN%-код к карточке.") then
@@ -3911,6 +3619,7 @@ function carfunc()
 						end
 					end
 				end
+
 				if target ~= nil and wasKeyPressed(0x12) and carfuncs.trunk[0] == true then
 					local result, id = sampGetVehicleIdByCarHandle(target)
 					if result and not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
@@ -4257,7 +3966,7 @@ function imgui.BeginWin11Menu(title, var, stateButton, selected, isOpened, sizeC
 	elseif selected[0] == "Hotkey" then
 	imgui.TextColoredRGB("{FFFFFF}"..title.." | {1E90FF}Меню хоткеев")
 	elseif selected[0] == "piemenu" then
-	imgui.TextColoredRGB("{FFFFFF}"..title.." | {1E90FF}Круговое меню {FF0000}(БЕТА)")
+	imgui.TextColoredRGB("{FFFFFF}"..title.." | {1E90FF}Круговое меню {FF0000}(NEW)")
 	elseif selected[0] == 4 then
 	imgui.TextColoredRGB("{FFFFFF}"..title.." | {1E90FF}О скрипте")
 	end
