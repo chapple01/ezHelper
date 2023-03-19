@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.5.8")
+script_version("1.5.9")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -21,8 +21,10 @@ local memory = require 'memory'
 local bass = require 'lib.bass'
 local pie = require 'mimgui_piemenu'
 local requests = require 'requests'
+local cjson = require('cjson')
 local wm = require 'lib.windows.message'
 local addons = require "ADDONS"
+local toast_ok, toast = pcall(import, 'lib\\mimtoasts.lua')
 
 	-----===[[VARIABLES]]===-----
 		-----==[[INT]]==-----
@@ -58,7 +60,6 @@ local directIni = "ezHelper/ezHelper.ini"
 local directOIni = "ezHelper/ezOnline.ini"
 local gsub, gmatch, find, ceil, len = string.gsub, string.gmatch, string.find, math.ceil, string.len
 local sizeX, sizeY = getScreenResolution()
-local nowTime = os.date("%H:%M:%S", os.time())
 encoding.default = 'CP1251'         
 local u8 = encoding.UTF8
 
@@ -96,6 +97,7 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 02.01.2023 - 1.5.6 - Убрал отображение количества попыток подключений к серверу, так как скрипт с ним не стабильно работал. Переименовал Fix WARZ на Fix CEF. Добавил новую икноку в RHUD.
 29.01.2023 - 1.5.7 - Откорректировал отображение меню RHUD. Исправил AutoFill под лаунчер (спасибо chapo). Добавил функцию удаление игроков/машин в зоне стрима. Исправил баг с лимитом денег в RHUD. Обновил Виджет, теперь в нём есть ещё более полезная информация! Оптимизировал функцию Fix CEF, теперь она срабатывает при появлении окон CEF, а не по триггерам по типу нажатой кнопки.
 28.02.2023 - 1.5.8 - Исправил баг с белыми квадратиками вместо шрифта, добавил новый логотип, PieBinder выходит из БЕТА версии. Оптимизировал код.
+19.03.2023 - 1.5.9 - Исправил баг с PieMenu. Добавил в настройки виджета выбор часового пояса. Добавил обводку текста в виджете. Исправил отображение времени в виджете. Убрал функцию HideFamTag, так как в ней уже нет необходимости. Добавил новую систему с уведомлениями о новых предметах.
 ]]
 
 	-----===[[INIFILE]]===-----
@@ -113,7 +115,6 @@ local mainIni = inicfg.load({
 		fixarzdialogs = false,
 		launcher = true,
 	},
-	fpsup =	{hidefam = false},
 	features =
 	{
 		autoid = false,
@@ -153,7 +154,8 @@ local mainIni = inicfg.load({
 		maxhp = 100,
 		lid = 1,
 		adrunk = true,
-		hun = 0
+		hun = 0,
+		notification = false
 	},
 	TimeWeather =
 	{
@@ -177,6 +179,7 @@ if not doesFileExist("moonloader/config/ezHelper/ezOnline.ini") then inicfg.save
 	-----===[[SOUNDS]]===-----
 local panic = getGameDirectory().."\\moonloader\\resource\\ezHelper\\panic.mp3"
 local notification = getGameDirectory().."\\moonloader\\resource\\ezHelper\\notification.mp3"
+local notf = getGameDirectory().."\\moonloader\\resource\\ezHelper\\notf.mp3"
 
 	-----===[[IMAGES]]===-----
 
@@ -195,6 +198,7 @@ local widgetcfg = {
 		},
 		color = {0, 0, 0, 1},
 	},
+	tz = 3,
 	piemenu_active = true,
 
 	piemenu_car_fill = true,
@@ -240,7 +244,6 @@ local TimeWeatherWindow = new.bool(false)
 local updatewindow = new.bool(false)
 local sesOnline = new.int(0)
 local oxygen = new.int(100)
-local hidefam = new.bool(mainIni.fpsup.hidefam)
 
 local boolfixes = {
 	fixdver = new.bool(mainIni.fixes.fixdver),
@@ -262,7 +265,8 @@ local boolhud = {
 	show = new.bool(true),
 	maxhp = new.int(mainIni.hud.maxhp),
 	lid = new.int(mainIni.hud.lid),
-	adrunk = new.bool(mainIni.hud.adrunk)
+	adrunk = new.bool(mainIni.hud.adrunk),
+	notification = new.bool(mainIni.hud.notification)
 }
 
 local boolwidget = {
@@ -272,7 +276,8 @@ local boolwidget = {
 	online = new.bool(widgetcfg.widget.online),
 	color = new.float[4](widgetcfg.widget.color),
 	posX = widgetcfg.widget.wpos.posX,
-	posY = widgetcfg.widget.wpos.posY
+	posY = widgetcfg.widget.wpos.posY,
+	tz = new.int(widgetcfg.tz)
 }
 
 local piebool = {
@@ -700,7 +705,6 @@ function main()
 	sampRegisterChatCommand("fh", function(id)
 		if id == "" then
 			ezMessage("Введите ID дома: /fh [ID].")
-			printStringNow("Fix CEF: ~b~~g~ACTIVATE", 199990) 
 		else
 			sampSendChat('/findihouse '..id..'')
 		end
@@ -894,6 +898,12 @@ function main()
 			bindplay = false
 		end
 
+		if spawn == true then
+			if features.mac[0] then
+				bass.BASS_ChannelStop(mac)
+			end
+		end
+
 		fixes_func()
 		hotkeyactivate()
 		autoscroll_func()
@@ -930,6 +940,10 @@ function fixcef()
 			end
 		end
 	end
+end
+
+function getTime(offset)
+    return os.date('!%H:%M:%S', os.time() + (offset or 3) * 60 * 60)
 end
 
 function fixes_func()
@@ -1205,9 +1219,6 @@ local hudFrame = imgui.OnFrame(
 		h.HideCursor = true
 		displayHud(false)
 		if spawn == true then
-			if features.mac[0] then
-				bass.BASS_ChannelStop(mac)
-			end
 			
 			local textinv = sampTextdrawGetString(inv)
 			if textinv == "…H‹EHЏAP’" or textinv == "INVENTORY" then
@@ -1514,38 +1525,33 @@ local widgetFrame = imgui.OnFrame(
 			imgui.SetNextWindowSize(imgui.ImVec2(192.5, -1), imgui.Cond.Always)
 			imgui.Begin('  ', boolwidget.show, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
 			imgui.PushFont(wfont)
-			imgui.CenterTextColoredRGB(nowTime)
+			imgui.CTOCRGB(getTime(boolwidget.tz[0]),1.8, 2.5)
 			imgui.PopFont()
 			imgui.SetCursorPosY(25)
-            imgui.CenterTextColoredRGB(getStrDate(os.time()))
+            imgui.CTOCRGB(getStrDate(os.time()), 1, 25)
 			if boolwidget.info[0] == true then
 				imgui.Separator()
 				imgui.PushFont(mf6)
-				imgui.SetCursorPos(imgui.ImVec2(12, 52.5))
-				imgui.IconColoredRGB("{FFFFFF}"..faicons('USER')..' '..tostring(pid))
+				imgui.OICRGB(faicons('USER')..' '..tostring(pid), 1, 12, 52.5)
 				local len = imgui.CalcTextSize(tostring(ping)).x
-				imgui.SetCursorPos(imgui.ImVec2(60, 52.5))
-				imgui.IconColoredRGB("{FFFFFF}"..faicons('WIFI')..' '..tostring(ping))
+				imgui.OICRGB(faicons('WIFI')..' '..tostring(ping), 1, 60, 52.5)
 				if timerState == true then
-					imgui.SetCursorPos(imgui.ImVec2(147.5, 52.5))
 					if timerStart and timerEndTime then
 						local timerEndTimeSec = timerEndTime
 						local showtime = timerEndTimeSec - (os.time() - timerStart)
-						imgui.IconColoredRGB("{FF0000}"..faicons('SHIELD_BLANK')..' '..showtime)
+						imgui.OICRGB(faicons('SHIELD_BLANK')..' '..showtime, 1, 147.5, 52.5, '{FF0000}')
 						if showtime == 0 then
 							timerState = false
 						end
 					end
 				else
-					imgui.SetCursorPos(imgui.ImVec2(152.5, 52.5))
-					imgui.IconColoredRGB("{FFFFFF}"..faicons('SHIELD_BLANK'))
+					imgui.OICRGB(faicons('SHIELD_BLANK'), 1, 152.5, 52.5)
 				end
-				imgui.SetCursorPos(imgui.ImVec2(114, 52.5))
 				clor = (("%06X"):format(bit.band(sampGetPlayerColor(pid), 0xFFFFFF)))
 				if sampGetPlayerColor(pid) == 23486046 then
-					imgui.IconColoredRGB("{"..clor.."}"..faicons('MASK'))
+					imgui.OICRGB(faicons('MASK'), 1, 114, 52.5, "{"..clor.."}")
 				else
-					imgui.IconColoredRGB("{FFFFFF}"..faicons('MASK'))
+					imgui.OICRGB(faicons('MASK'), 1, 114, 52.5)
 				end
 				imgui.PopFont()
 				imgui.SetCursorPosY(75)
@@ -1554,13 +1560,14 @@ local widgetFrame = imgui.OnFrame(
 				imgui.PushFont(smallfont)
 				imgui.Separator()
 				if sampGetGamestate() ~= 3 then
-					imgui.CenterTextColoredRGB("Подключение: "..get_clock(connectingTime))
+					imgui.CTOCRGB("Подключение: "..get_clock(connectingTime), 1, 80)
 				else
-					imgui.CenterTextColoredRGB("Сессия: "..get_clock(sesOnline[0]))
-					imgui.CenterTextColoredRGB("За день: "..get_clock(onlineIni.onDay.online))
+					imgui.CTOCRGB("Сессия: "..get_clock(sesOnline[0]), 1, 80)
+					imgui.CTOCRGB("За день: "..get_clock(onlineIni.onDay.online), 1, 98)
 				end
 				imgui.PopFont()
 			end
+			imgui.PopStyleColor()
 			
 			if piebool.piemenu[0] then
 				if imgui.IsMouseClicked(2) then imgui.OpenPopup('PieMenu') end
@@ -1657,21 +1664,91 @@ local widgetFrame = imgui.OnFrame(
 							if pie.BeginPieMenu(fa.ICON_FA_STAR..ffi.string(piebinder.category[c])) then
 								for i = 1, 25 do
 									if #ffi.string(piebinder.slot[i]) > 0 then
-										if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.slot[i])) then
-											bindplay = true	
-											if BIND_THREAD then	
-												BIND_THREAD:terminate()
-											end
-													
-											BIND_THREAD = lua_thread.create(function()
-												for bp in pbcfg.text[i]:gmatch('[^~]+') do
-													if bindplay then
-														sampProcessChatInput(tostring(bp))
-														wait(piebinder.cd[i][0] * 1000)
-													end
+										if c == 1 and i <= 5 then
+											if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.slot[i])) then
+												bindplay = true	
+												if BIND_THREAD then	
+													BIND_THREAD:terminate()
 												end
-												bindplay = false
-											end)
+														
+												BIND_THREAD = lua_thread.create(function()
+													for bp in pbcfg.text[i]:gmatch('[^~]+') do
+														if bindplay then
+															sampProcessChatInput(tostring(bp))
+															wait(piebinder.cd[i][0] * 1000)
+														end
+													end
+													bindplay = false
+												end)
+											end
+										elseif c == 2 and i >= 6 and i <= 10 then
+											if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.slot[i])) then
+												bindplay = true	
+												if BIND_THREAD then	
+													BIND_THREAD:terminate()
+												end
+														
+												BIND_THREAD = lua_thread.create(function()
+													for bp in pbcfg.text[i]:gmatch('[^~]+') do
+														if bindplay then
+															sampProcessChatInput(tostring(bp))
+															wait(piebinder.cd[i][0] * 1000)
+														end
+													end
+													bindplay = false
+												end)
+											end
+										elseif c == 3 and i >= 11 and i <= 15 then
+											if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.slot[i])) then
+												bindplay = true	
+												if BIND_THREAD then	
+													BIND_THREAD:terminate()
+												end
+														
+												BIND_THREAD = lua_thread.create(function()
+													for bp in pbcfg.text[i]:gmatch('[^~]+') do
+														if bindplay then
+															sampProcessChatInput(tostring(bp))
+															wait(piebinder.cd[i][0] * 1000)
+														end
+													end
+													bindplay = false
+												end)
+											end
+										elseif c == 4 and i >= 16 and i <= 20 then
+											if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.slot[i])) then
+												bindplay = true	
+												if BIND_THREAD then	
+													BIND_THREAD:terminate()
+												end
+														
+												BIND_THREAD = lua_thread.create(function()
+													for bp in pbcfg.text[i]:gmatch('[^~]+') do
+														if bindplay then
+															sampProcessChatInput(tostring(bp))
+															wait(piebinder.cd[i][0] * 1000)
+														end
+													end
+													bindplay = false
+												end)
+											end
+										elseif c == 5 and i >= 21 and i <= 25 then
+											if pie.PieMenuItem(fa.ICON_FA_STAR..ffi.string(piebinder.slot[i])) then
+												bindplay = true	
+												if BIND_THREAD then	
+													BIND_THREAD:terminate()
+												end
+														
+												BIND_THREAD = lua_thread.create(function()
+													for bp in pbcfg.text[i]:gmatch('[^~]+') do
+														if bindplay then
+															sampProcessChatInput(tostring(bp))
+															wait(piebinder.cd[i][0] * 1000)
+														end
+													end
+													bindplay = false
+												end)
+											end
 										end
 									end
 								end
@@ -1684,7 +1761,6 @@ local widgetFrame = imgui.OnFrame(
 					imgui.PopStyleColor()
 				end
 			end
-			imgui.PopStyleColor()
 		end
 	end
 )
@@ -1885,11 +1961,11 @@ local newFrame = imgui.OnFrame(
 					imgui.PopFont()
 
 					imgui.SetCursorPos(imgui.ImVec2(30.000000,20.000000));
-					if imgui.Checkbox(u8"HideFamTag", hidefam) then
-						mainIni.fpsup.hidefam = hidefam[0]
+					if imgui.Checkbox(u8"ADrunk", boolhud.adrunk) then
+						mainIni.hud.adrunk = boolhud.adrunk[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.ezHint('Убирает над головой название фамы',
+					imgui.ezHint('Убирает тряску экрана (вы никогда не опьянете)',
 					hpfont, mainfont, 14.000000, 21.000000)
 				
 					imgui.SetCursorPos(imgui.ImVec2(30.000000,45.000000));
@@ -1962,6 +2038,10 @@ local newFrame = imgui.OnFrame(
 								ecfg.save(wgname, widgetcfg)
 							end
 							imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.5, 0.5))
+							if imgui.Button(u8'Часовой пояс', imgui.ImVec2(120,20)) then
+								imgui.OpenPopup("timezone")
+							end
+
 							if imgui.Button(u8'Местоположение', imgui.ImVec2(120,20)) then
 								lua_thread.create(function()
 									checkCursor = true
@@ -1984,6 +2064,28 @@ local newFrame = imgui.OnFrame(
 								imgui.OpenPopup("ColorEdit")
 							end
 							imgui.PopStyleVar()
+							if imgui.BeginPopup('timezone', false, imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar) then
+
+								if imgui.RadioButtonIntPtr(u8'Киев (+2)', boolwidget.tz, 2) then
+									widgetcfg.tz = boolwidget.tz[0]
+									ecfg.save(wgname, widgetcfg)
+								end
+								if imgui.RadioButtonIntPtr(u8'Москва (+3)', boolwidget.tz, 3) then
+									widgetcfg.tz = boolwidget.tz[0]
+									ecfg.save(wgname, widgetcfg)
+								end
+								if imgui.RadioButtonIntPtr(u8'Саратов (+4)', boolwidget.tz, 4) then
+									widgetcfg.tz = boolwidget.tz[0]
+									ecfg.save(wgname, widgetcfg)
+								end
+								imgui.PushItemWidth(22.5)
+								if imgui.InputInt(u8'Другой', boolwidget.tz, 0, 1) then
+									widgetcfg.tz = boolwidget.tz[0]
+									ecfg.save(wgname, widgetcfg)
+								end
+								imgui.PopItemWidth()
+								imgui.EndPopup()
+							end
 							if imgui.BeginPopup('ColorEdit', false, imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar) then
 								if imgui.ColorEdit4("##", boolwidget.color) then
 									widgetcfg.widget.color = {boolwidget.color[0], boolwidget.color[1], boolwidget.color[2], boolwidget.color[3]}
@@ -1999,7 +2101,7 @@ local newFrame = imgui.OnFrame(
 							end
 							if piebool.piemenu[0] then
 								imgui.PushFont(smallfont)
-								imgui.SetCursorPos(imgui.ImVec2(88.00000,110.000000));
+								imgui.SetCursorPos(imgui.ImVec2(88.00000,134));
 								imgui.Text(fa.ICON_FA_COG)
 								imgui.PopFont()
 								if imgui.IsItemClicked() then
@@ -2177,12 +2279,19 @@ local newFrame = imgui.OnFrame(
 					hpfont, mainfont, 150.000000, 71.000000)
 
 					imgui.SetCursorPos(imgui.ImVec2(166.000000,95.000000));
-					if imgui.Checkbox(u8"ADrunk", boolhud.adrunk) then
-						mainIni.hud.adrunk = boolhud.adrunk[0]
+					if imgui.Checkbox(u8"Notfication", boolhud.notification) then
+						mainIni.hud.notification = boolhud.notification[0]
 						inicfg.save(mainIni, directIni)
+						if boolhud.notification[0] == true then
+							toast.Show(u8('{ffffff}Уведомления включены!'), toast.TYPE.INFO, 6)
+							playVolume(notf, 1)
+						else
+							toast.Show(u8('{ffffff}Уведомления выключены!'), toast.TYPE.INFO, 6)
+							playVolume(notf, 1)
+						end
 					end
 					
-					imgui.ezHint('{ffffff}Убирает тряску экрана (вы никогда не опьянеете).',
+					imgui.ezHint('{FF0000}[NEW]{FFFFFF} Показывает уведомления о полученных предметах.',
 					hpfont, mainfont, 150.000000, 96.000000)
 
 				imgui.EndChild()
@@ -2509,24 +2618,24 @@ local newFrame = imgui.OnFrame(
 				imgui.SetCursorPos(imgui.ImVec2(250.000000,150.000000));
 				imgui.BeginChild("fixes",imgui.ImVec2(170, 140), true)
 					imgui.PushFont(mainfont)
-					imgui.CenterTextColoredRGB('{FF0000}Фиксы')
+					imgui.CenterTextColoredRGB('{1E90FF}Фиксы')
 					imgui.PopFont()
-					imgui.SetCursorPos(imgui.ImVec2(30.000000,20.000000));
+					imgui.SetCursorPos(imgui.ImVec2(30.000000,23.000000));
 					if imgui.Checkbox(u8"Fix Doors", boolfixes.fixdver) then
 						mainIni.fixes.fixdver = boolfixes.fixdver[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.SetCursorPos(imgui.ImVec2(30.000000,45.000000));
+					imgui.SetCursorPos(imgui.ImVec2(30.000000,48.000000));
 					if imgui.Checkbox(u8"Fix Spawns", boolfixes.fixspawn) then
 						mainIni.fixes.fixspawn = boolfixes.fixspawn[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.SetCursorPos(imgui.ImVec2(30.000000,70.000000));
+					imgui.SetCursorPos(imgui.ImVec2(30.000000,73.000000));
 					if imgui.Checkbox(u8"Fix CEF", boolfixes.fixcef) then
 						mainIni.fixes.fixarzdialogs = boolfixes.fixcef[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.SetCursorPos(imgui.ImVec2(30.000000,95.000000));
+					imgui.SetCursorPos(imgui.ImVec2(30.000000,98.000000));
 					if imgui.Checkbox(u8"Launcher", boolfixes.launcher) then
 						mainIni.fixes.launcher = boolfixes.launcher[0]
 						inicfg.save(mainIni, directIni)
@@ -3168,7 +3277,20 @@ end
 function sampev.onServerMessage(color, text)
 	--if text:find(".+") then print(text) end
 	if text:find('Увы%, вам не удалось улучшить предмет.+') then
-		sampSendClickTextdraw(2078)
+		--sampSendClickTextdraw(2078)
+	end
+	if boolhud.notification[0] then
+		if text:find('Вам был добавлен предмет.+') then
+			local item = text:match("Вам был добавлен предмет '(.+)'. Чтобы")
+			toast.Show(u8('{ffffff}Вам был добавлен предмет {ffff00}'..item), toast.TYPE.INFO, 6)
+			playVolume(notf, 1)
+		end
+		--Вы использовали {cccccc}'Супер мото-ящик'{ffff00}! Ваш приз: {cccccc}Серебряная рулетка (количество: 2шт.)
+		if text:find("Вы использовали %{cccccc%}%'.+%'%{ffff00%}! Ваш приз%: %{cccccc%}.+ %(количество%: %d+шт%.%)") then
+			local item, count = text:match("Ваш приз%: %{cccccc%}(.+) %(количество%: (%d+)шт%.%)")
+			toast.Show(u8(string.format('{ffffff}Вам был добавлен предмет {ffff00}%s (x%s)', item, count)), toast.TYPE.INFO, 8)
+			playVolume(notf, 1)
+		end
 	end
 	if features.autoid[0] == true then
 		if text:find('Вы успешно начали погоню за игроком .+') then
@@ -3546,7 +3668,6 @@ function time()
     connectingTime = 0
     while true do
         wait(1000)
-        nowTime = os.date("%H:%M:%S", os.time())
 		ping =  sampGetPlayerPing(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
 		if sampGetGamestate() == 3 then
 	        sesOnline[0] = sesOnline[0] + 1
@@ -3641,16 +3762,6 @@ end
 function _rfunc()
 	while true do 
 		wait(20)
-		if hidefam[0] == true then
-			for i=0, 2048 do
-				if sampIs3dTextDefined(i) then
-					local text, color, posX, posY, posZ, distance, ignoreWalls, playerId, vehicleId = sampGet3dTextInfoById(i)
-					if text:find("Family") or text:find("Empire") or text:find("Squad") or text:find("Dynasty") or text:find("Corporation") or text:find("Crew") or text:find("Brotherhood") or text:find("Club") then
-					sampDestroy3dText(i)
-					end
-				end
-			end
-		end
 		if invpl then
 			for _, ped in ipairs(getAllChars()) do
 				if doesCharExist(ped) and ped ~= PLAYER_PED and select(2, sampGetPlayerIdByCharHandle(ped)) ~= tonumber(frid) then
@@ -3738,7 +3849,10 @@ function files_add()
 		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/bang.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/bang.mp3", function(id, status, p1, p2) end)
 	end
 	if not doesFileExist('moonloader\\resource\\ezHelper\\notification.mp3') then
-		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/notification.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/notification.mp3", function(id, status, p1, p2)
+		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/notification.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/notification.mp3", function(id, status, p1, p2) end)
+	end
+	if not doesFileExist('moonloader\\resource\\ezHelper\\notf.mp3') then
+		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/notf.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/notf.mp3", function(id, status, p1, p2)
 			if status == 58 then
 				ezMessage('Загрузка звуков {00FF00}успешно завершена.')
 			end
@@ -4084,6 +4198,40 @@ function imgui.EndWin11Menu()
     imgui.EndChild()
     imgui.End()
     imgui.PopStyleVar(2)
+end
+
+function imgui.OICRGB(text,o,x,y,color)
+	imgui.SetCursorPos(imgui.ImVec2(x+o,y))
+	imgui.IconColoredRGB('{000000}'..text)
+	imgui.SetCursorPos(imgui.ImVec2(x-o,y))
+	imgui.IconColoredRGB('{000000}'..text)
+	imgui.SetCursorPos(imgui.ImVec2(x,y+o))
+	imgui.IconColoredRGB('{000000}'..text)
+	imgui.SetCursorPos(imgui.ImVec2(x,y-o))
+	imgui.IconColoredRGB('{000000}'..text)
+	imgui.SetCursorPos(imgui.ImVec2(x,y))
+	if color then
+		imgui.IconColoredRGB(color..text)
+	else
+		imgui.IconColoredRGB('{FFFFFF}'..text)
+	end
+end
+
+function imgui.CTOCRGB(text,o,y)
+	local width = imgui.GetWindowWidth()
+	local textsize = text:gsub('{.-}', '')
+	local text_width = imgui.CalcTextSize(u8(textsize))
+
+	imgui.SetCursorPos(imgui.ImVec2(width / 2 - text_width .x / 2+o,y))
+	imgui.TextColoredRGB('{000000}'..text)
+	imgui.SetCursorPos(imgui.ImVec2(width / 2 - text_width .x / 2-o,y))
+	imgui.TextColoredRGB('{000000}'..text)
+	imgui.SetCursorPos(imgui.ImVec2(width / 2 - text_width .x / 2,y+o))
+	imgui.TextColoredRGB('{000000}'..text)
+	imgui.SetCursorPos(imgui.ImVec2(width / 2 - text_width .x / 2,y-o))
+	imgui.TextColoredRGB('{000000}'..text)
+	imgui.SetCursorPos(imgui.ImVec2(width / 2 - text_width .x / 2,y))
+	imgui.TextColoredRGB(text)
 end
 
 function imgui.CenterTextColoredRGB(text)
