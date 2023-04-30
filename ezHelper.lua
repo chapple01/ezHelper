@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.5.9")
+script_version("1.6.0")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
@@ -25,6 +25,7 @@ local cjson = require('cjson')
 local wm = require 'lib.windows.message'
 local addons = require "ADDONS"
 local toast_ok, toast = pcall(import, 'lib\\mimtoasts.lua')
+local rng_ok, rng = pcall(import, '\\RNG.lua')
 
 	-----===[[VARIABLES]]===-----
 		-----==[[INT]]==-----
@@ -42,6 +43,8 @@ local connectingTime = 0
 local cost_id = 0
 local fill_id = 0
 local fuelId, currentLiters, maxLiters = 0, 50, 100
+local attempts = 0
+local hun = 0
 
 	  -----===[[BOOLS]]===-----
 local cursor = true
@@ -54,6 +57,8 @@ local actv = false
 local spawn = false
 local callproda = false
 local auth = false
+local vrtext = nil
+local ad = false
 
 		-----==[[OTHER]]==-----
 local directIni = "ezHelper/ezHelper.ini"
@@ -98,6 +103,7 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 29.01.2023 - 1.5.7 - Откорректировал отображение меню RHUD. Исправил AutoFill под лаунчер (спасибо chapo). Добавил функцию удаление игроков/машин в зоне стрима. Исправил баг с лимитом денег в RHUD. Обновил Виджет, теперь в нём есть ещё более полезная информация! Оптимизировал функцию Fix CEF, теперь она срабатывает при появлении окон CEF, а не по триггерам по типу нажатой кнопки.
 28.02.2023 - 1.5.8 - Исправил баг с белыми квадратиками вместо шрифта, добавил новый логотип, PieBinder выходит из БЕТА версии. Оптимизировал код.
 19.03.2023 - 1.5.9 - Исправил баг с PieMenu. Добавил в настройки виджета выбор часового пояса. Добавил обводку текста в виджете. Исправил отображение времени в виджете. Убрал функцию HideFamTag, так как в ней уже нет необходимости. Добавил новую систему с уведомлениями о новых предметах.
+30.04.2023 - 1.6.0 - Добавил новую иконку в худ. Исправил загрузку для новых иконок. Новая функция "AntiParachute". Исправил баг с хоткеями, когда ложно срабатывал ALT. Добавил возможность биндить на боковые кнопки мыши. В функцию АнтиФриз добавил сбив анимации. Теперь размораживает персонажа и сбивает анимаицию в одной функции. Добавил возможность удалять хоткеи. Исправил отображение звука в CSK.
 ]]
 
 	-----===[[INIFILE]]===-----
@@ -114,6 +120,7 @@ local mainIni = inicfg.load({
 		fixvint = false,
 		fixarzdialogs = false,
 		launcher = true,
+		aparachute = false,
 	},
 	features =
 	{
@@ -124,6 +131,7 @@ local mainIni = inicfg.load({
 		correctdmg = false,
 		mac = true,
 		kolokol = true,
+		vrr = true,
 		kolvolume = 1,
 		fov = 70,
 		sapin = 0,
@@ -252,6 +260,7 @@ local boolfixes = {
 	fixvint = new.bool(mainIni.fixes.fixvint),
 	fixcef = new.bool(mainIni.fixes.fixarzdialogs),
 	launcher = new.bool(mainIni.fixes.launcher),
+	aparachute = new.bool(mainIni.fixes.aparachute)
 }
 
 local binder = {
@@ -340,7 +349,8 @@ local features = {
 	panicarz = new.bool(mainIni.features.panicarz),
 	correctdmg = new.bool(mainIni.features.correctdmg),
 	mac = new.bool(mainIni.features.mac),
-	kolokol = new.bool(mainIni.features.kolokol)
+	kolokol = new.bool(mainIni.features.kolokol),
+	vrr = new.bool(mainIni.features.vrr)
 }
 
 local ezafk = {
@@ -432,7 +442,7 @@ ecfg.save(filename, cfg)
 
 	-----===[[HOTKEYCFG]]===-----
 local hcfg = {
-	openscript = {}, antifreeze = {},  --OTHER
+	openscript = {}, antifreeze = {}, vintcoll_key = {},  --OTHER
 	narko = {}, aidkit = {}, armor = {}, beer = {}, --ITEMS
 	fllcar = {}, repcar = {}, hkstrobe = {}, domkrat = {}, --CARS
 	rcveh = {},	surf = {}, skate = {}, shar = {}, deltap = {} --ACS
@@ -461,12 +471,12 @@ local tKeys = {}
 local bhotkey = {}
 bhotkey.v = {}
 
-local openscript, antifreeze = {}, {}
+local openscript, antifreeze, vintcoll_key = {}, {}, {}
 local aidkit, narko, armor, beer = {}, {}, {}, {}
 local fllcar, repcar, hkstrobe, domkrat = {}, {}, {}, {}
 local rcveh, surf, skate, shar, deltap = {}, {}, {}, {}, {}
 
-openscript.v, antifreeze.v = hcfg.openscript, hcfg.antifreeze
+openscript.v, antifreeze.v, vintcoll_key.v = hcfg.openscript, hcfg.antifreeze, hcfg.vintcoll_key
 aidkit.v, narko.v, armor.v, beer.v = hcfg.aidkit, hcfg.narko, hcfg.armor, hcfg.beer
 fllcar.v, repcar.v, hkstrobe.v, domkrat.v = hcfg.fllcar, hcfg.repcar, hcfg.hkstrobe, hcfg.domkrat
 rcveh.v, surf.v, skate.v, shar.v, deltap.v = hcfg.rcveh, hcfg.surf, hcfg.skate, hcfg.shar, hcfg.deltap
@@ -506,6 +516,8 @@ vkeys.key_names[vkeys.VK_MULTIPLY] 			= 'Num *'
 vkeys.key_names[vkeys.VK_ADD] 				= 'Num +'
 vkeys.key_names[vkeys.VK_DECIMAL] 			= 'Num .'
 vkeys.key_names[vkeys.VK_DIVIDE] 			= 'Num /'
+vkeys.key_names[vkeys.VK_XBUTTON1]			= 'MB1'
+vkeys.key_names[vkeys.VK_XBUTTON2]			= 'MB2'
 -----------------------ENDKEYSNAMES-----------------------
 --==[[\/\/\/\/\/\/\/\/\\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\]]==--
 
@@ -589,7 +601,8 @@ imgui.OnInitialize(function()
 	logo4 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\HiTech.png')
 	logo5 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\NewYear.png')
 	logo6 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\saintV.png')
-	logo = {logo1, logo2, logo3, logo4, logo5, logo6}
+	logo7 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\easter.png')
+	logo = {logo1, logo2, logo3, logo4, logo5, logo6, logo7}
 
 	xPD = imgui.CreateTextureFromFile(getWorkingDirectory() .. "\\resource\\ezHelper\\XPayDay.png")
 
@@ -647,9 +660,13 @@ imgui.OnInitialize(function()
     builder:BuildRanges(defaultGlyphRanges1)
     mf6 = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/arialbd.ttf', 14.0, nil, glyph_ranges)
     icon = imgui.GetIO().Fonts:AddFontFromMemoryCompressedBase85TTF(faicons.get_font_data_base85('solid'), 18, config2, defaultGlyphRanges1[0].Data)
+
+	imgui.GetIO().IniFilename = nil
 end)
 
-local hun = 0
+function hexencode(str)
+	return (str:gsub(".", function(char) return string.format("%2x", char:byte()) end))
+ end
 
 --MAIN
 function main()
@@ -806,7 +823,38 @@ function main()
 			ezMessage('Удаление машин в зоне стрима {FF0000}отключено.')
 		end	
 	end)
-		
+	
+	local font = renderCreateFont("Calibri", 12, 9)
+	addEventHandler("onD3DPresent", function()
+		if features.vrr[0] then
+			if (os.clock() - (PREVIOUS_SEND or 0)) <= 1.00 then
+				if vrtext ~= nil then vrtext = nil; return end
+			end
+
+			if vrtext ~= nil then
+				if not sampIsChatInputActive() then
+					local input = getStructElement(sampGetInputInfoPtr(), 0x8, 4)
+					local X, Y = getStructElement(input, 0x8, 4) + 10, getStructElement(input, 0xC, 4)
+					local len = renderGetFontDrawTextLength(font, vrtext)
+					local hei = renderGetFontDrawHeight(font) + 2
+
+					for i = 1, 3 do
+						local proc = select(2, math.modf(os.clock() * 0.7 + 0.33 * i)) * 100
+						local a = 255 / 50 * proc; a = a > 255 and 510 - a or a
+						renderDrawPolygon(X + (proc / 2), Y, 10, 10, 16, 0, set_alpha(0xFFFFFFFF, a))
+					end
+					renderFontDrawText(font, vrtext, X + 65, Y - hei / 2, -1)
+					renderFontDrawText(font, string.format("[x%s]", attempts), X + 70 + len, Y - hei / 2, 0x66FFFFFF)
+				end
+
+				if GLOBAL_TIMER == nil or (os.clock() - GLOBAL_TIMER) > 0.25 then
+					sampSendChat("/vr " .. vrtext)
+					GLOBAL_TIMER = os.clock()
+					attempts = attempts + 1
+				end
+			end
+		end
+	end)
 
 	
 	if onlineIni.onDay.today ~= os.date("%a") then 
@@ -885,6 +933,8 @@ function main()
 		end
         if isKeyJustPressed(VK_O) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/olock")
+			playVolume(notf)
+
 		end
         if isKeyJustPressed(VK_J) and not sampIsChatInputActive() and not sampIsDialogActive() then
 			sampSendChat("/jlock")
@@ -975,6 +1025,12 @@ function fixes_func()
 		memory.fill(0x6C5107, 0x90, 59, true)
 	else
 		memory.hex2bin("8B5424088B4C24108B461452518B4C24686AFD508B44246C83EC0C8BD489028B842480000000894A048BCE894208E816DD01008A4E36C0E9033ACB", 0x6C5107, 59)
+	end
+
+	if boolfixes.aparachute[0] then
+		memory.fill(0x5704CB, 0x90, 3, true)
+	else
+		memory.hex2bin('E870E7', 0x5704CB, 3)
 	end
 end
 
@@ -1177,16 +1233,32 @@ function hotkeyactivate()
 				freezeCharPosition(PLAYER_PED, true)
 				freezeCharPosition(PLAYER_PED, false)
 				setPlayerControl(PLAYER_HANDLE, true)
-				--restoreCameraJumpcut()
 				clearCharTasksImmediately(PLAYER_PED)
+				local x, y, z = getCharCoordinates(playerPed)
+				setCharCoordinates(playerPed, x, y, z - 1)
 			end
 		else
 			if isKeyDown(antifreeze.v[1]) and wasKeyPressed(antifreeze.v[2]) and not isCharInAnyCar(1) and not isCharInAnyHeli(1) and not isCharInAnyPlane(1) and not isCharInAnyBoat(1) and not isCharInAnyPoliceVehicle(1) then
 				freezeCharPosition(PLAYER_PED, true)
 				freezeCharPosition(PLAYER_PED, false)
 				setPlayerControl(PLAYER_HANDLE, true)
-				--restoreCameraJumpcut()
 				clearCharTasksImmediately(PLAYER_PED)
+				local x, y, z = getCharCoordinates(playerPed)
+				setCharCoordinates(playerPed, x, y, z - 1)
+			end
+		end
+
+		if #vintcoll_key.v < 2 then
+			if wasKeyPressed(vintcoll_key.v[1]) then
+				boolfixes.fixvint[0] = not boolfixes.fixvint[0]
+				mainIni.fixes.fixvint = boolfixes.fixvint[0]
+				inicfg.save(mainIni, directIni)
+			end
+		else
+			if isKeyDown(vintcoll_key.v[1]) and wasKeyPressed(vintcoll_key.v[2]) then
+				boolfixes.fixvint[0] = not boolfixes.fixvint[0]
+				mainIni.fixes.fixvint = boolfixes.fixvint[0]
+				inicfg.save(mainIni, directIni)
 			end
 		end
 
@@ -1216,7 +1288,15 @@ local hudFrame = imgui.OnFrame(
 	function() return boolhud.show[0] and boolhud.hud[0] end,
 	function(h)
 		imgui.DisableInput = false
-		h.HideCursor = true
+		if rng_ok then
+			if rng.checkW() then
+				h.HideCursor = false
+			else
+				h.HideCursor = true
+			end
+		else
+			h.HideCursor = true
+		end
 		displayHud(false)
 		if spawn == true then
 			
@@ -2046,7 +2126,7 @@ local newFrame = imgui.OnFrame(
 								lua_thread.create(function()
 									checkCursor = true
 									sampSetCursorMode(4)
-									ezMessage('Нажмите {0087FF}SPACE{FFFFFF} что-бы сохранить позицию')
+									ezMessage('Нажмите {87CEFA}SPACE{FFFFFF} что-бы сохранить позицию')
 									while checkCursor do
 										local cX, cY = getCursorPos()
 										boolwidget.posX, boolwidget.posY = cX, cY
@@ -2420,6 +2500,15 @@ local newFrame = imgui.OnFrame(
 								imgui.Image(logo[6], imgui.ImVec2(75, 75))
 								imgui.EndTooltip()
 							end
+							if imgui.RadioButtonIntPtr(u8'Easter', boolhud.lid,7) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[7], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
 							imgui.Separator()
 							imgui.CenterTextColoredRGB(" Ваше максимальное ХП:")
 							if imgui.RadioButtonIntPtr(u8'100 HP', boolhud.maxhp,100) then
@@ -2443,8 +2532,8 @@ local newFrame = imgui.OnFrame(
 							imgui.EndPopup()
 						end
 					end
-					imgui.ezHint('{FF0000}[NEW]{FFFFFF} RHUD - Reborn HUD. Перерождение нового худа аризоны.\n'..
-					'Для корректного отображения худа, в /settings необходимо выбрать [Тип худа - обычный].',
+					imgui.ezHint('{FF0000}[NEW]{FFFFFF} RHUD - Reborn HUD\nПерерождение CEF худа аризоны.\n'..
+					'{808080}Для корректного отображения худа, в /settings необходимо выбрать [Тип худа - обычный].',
 					hpfont, mainfont, 14.000000, 96.000000)
 
 					imgui.SetCursorPos(imgui.ImVec2(136.000000,20.000000));
@@ -2480,7 +2569,7 @@ local newFrame = imgui.OnFrame(
 						mainIni.features.mac = features.mac[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.ezHint('MAC - Music After Connected.\n'..
+					imgui.ezHint('MAC - Music After Connected\n'..
 					'Включает старую музыку, после подключения к серверу.',
 					hpfont, mainfont, 120.000000, 46.000000)
 
@@ -2489,9 +2578,19 @@ local newFrame = imgui.OnFrame(
 						mainIni.features.kolokol = features.kolokol[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.ezHint('CSK - Custom Sound Kolokol.\n'..
+					imgui.ezHint('CSK - Custom Sound Kolokol\n'..
 					'Заменяет стандартный звук колокольчика на кастомный.',
 					hpfont, mainfont, 120.000000, 71.000000)
+
+					imgui.SetCursorPos(imgui.ImVec2(136.000000,95.000000));
+					if imgui.Checkbox(u8"VCR", features.vrr) then
+						mainIni.features.vrr = features.vrr[0]
+						inicfg.save(mainIni, directIni)
+					end
+					imgui.ezHint('{FF0000}[NEW]{FFFFFF} VCR - Vip Chat Resend\n'..
+					'{FFFFFF}Упрощает отправку сообщений в ВИП чат. Спасибо {00dd00}Cosmo.\n'..
+					'{808080}Подробнее см. "О скрипте - CMD".',
+					hpfont, mainfont, 120.000000, 96.000000)
 					
 					if features.kolokol[0] == true then
 						imgui.PushFont(smallfont)
@@ -2504,7 +2603,7 @@ local newFrame = imgui.OnFrame(
 						if imgui.BeginPopup('kolvolume', false, imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize) then
 							imgui.CenterTextColoredRGB("Громкость:")
 							imgui.PushItemWidth(148.5)
-							if imgui.SliderInt('##slider.kolvolume', slider.kolvolume, 1, 10) then
+							if imgui.SliderInt('##slider.kolvolume', slider.kolvolume, 1, 100) then
 								inicfg.load(mainIni, directIni)
 								mainIni.features.kolvolume = slider.kolvolume[0]
 								inicfg.save(mainIni, directIni)
@@ -2517,7 +2616,7 @@ local newFrame = imgui.OnFrame(
 				imgui.EndChild()
 
 				imgui.SetCursorPos(imgui.ImVec2(10.000000,150.000000));
-				imgui.BeginChild("carfuncs",imgui.ImVec2(230, 140), true)
+				imgui.BeginChild("carfuncs",imgui.ImVec2(230, 150), true)
 
 					imgui.PushFont(mainfont)
 					imgui.CenterTextColoredRGB('{1E90FF}CarFuncs')
@@ -2563,7 +2662,7 @@ local newFrame = imgui.OnFrame(
 						inicfg.save(mainIni, directIni)
 					end
 					imgui.ezHint('{FFFFFF}Возвращает старое взаимодействие с багажником через {FFD700}ALT.\n'..
-					'{808080}Чтобы открыть багажник Barracks, нажмите {FFD700}ПКМ + ALT',
+					'{808080}Чтобы открыть багажник Barracks, нажмите {DCDCDC}ПКМ + ALT',
 					hpfont, mainfont, 126.000000, 49.000000)
 
 					imgui.SetCursorPos(imgui.ImVec2(140.000000,73.000000));
@@ -2616,7 +2715,7 @@ local newFrame = imgui.OnFrame(
 				imgui.EndChild()
 
 				imgui.SetCursorPos(imgui.ImVec2(250.000000,150.000000));
-				imgui.BeginChild("fixes",imgui.ImVec2(170, 140), true)
+				imgui.BeginChild("fixes",imgui.ImVec2(170, 150), true)
 					imgui.PushFont(mainfont)
 					imgui.CenterTextColoredRGB('{1E90FF}Фиксы')
 					imgui.PopFont()
@@ -2640,6 +2739,11 @@ local newFrame = imgui.OnFrame(
 						mainIni.fixes.launcher = boolfixes.launcher[0]
 						inicfg.save(mainIni, directIni)
 					end
+					imgui.SetCursorPos(imgui.ImVec2(30.000000,123.000000));
+					if imgui.Checkbox(u8"AntiParachute", boolfixes.aparachute) then
+						mainIni.fixes.aparachute = boolfixes.aparachute[0]
+						inicfg.save(mainIni, directIni)
+					end
 					
 
 					imgui.ezHint('{FFFFFF}Позволяет открывать двери моментально.\n'..
@@ -2654,9 +2758,13 @@ local newFrame = imgui.OnFrame(
 					'{808080}Небо заменялось на окно ArizonaPASS/Donate, F5.',
 					hpfont, mainfont, 14.000000, 71.000000)
 
-					imgui.ezHint('{FF0000}[NEW]{FFFFFF} Исправляет баг с новыми хоткеями от Аризоны.\n'..
+					imgui.ezHint('Исправляет баг с новыми хоткеями от Аризоны.\n'..
 					'{808080}Активация: {DCDCDC}Автоматическая',
 					hpfont, mainfont, 14.000000, 96.000000)
+
+					imgui.ezHint('{FF0000}[NEW]{FFFFFF} Исправляет баг с автоматической выдачей парашюта.\n'..
+					'{808080}Активация: {DCDCDC}Автоматическая',
+					hpfont, mainfont, 14.000000, 121.000000)
 					
 				imgui.EndChild()			
 			end
@@ -2881,7 +2989,7 @@ local newFrame = imgui.OnFrame(
 				end
 
 				if list == 2 then
-					imgui.BeginChild("newcmd",imgui.ImVec2(625, 220), true)
+					imgui.BeginChild("newcmd1",imgui.ImVec2(625, 220), true)
 					imgui.PushFont(mainfont)
 					imgui.TextColoredRGB("{FFA500}Новые команды.")
 					imgui.PopFont()
@@ -2918,9 +3026,50 @@ local newFrame = imgui.OnFrame(
 						list = 1
 					end
 					imgui.PopStyleVar(1)
+					imgui.SetCursorPos(imgui.ImVec2(380.000000,250.000000));
+					imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.745, 0.55))
+					if imgui.Button(fa.ICON_FA_ANGLE_DOUBLE_RIGHT, imgui.ImVec2(50, 50)) then
+						list = 3
+					end
+					imgui.PopStyleVar(1)
 					imgui.PopFont()
 					imgui.EndPopup()
-				end	
+				end
+
+				if list == 3 then
+					imgui.BeginChild("newcmd2",imgui.ImVec2(625, 220), true)
+					imgui.PushFont(mainfont)
+					imgui.TextColoredRGB("{FFA500}Новые команды.")
+					imgui.PopFont()
+					imgui.PushFont(smallfont)
+					imgui.TextColoredRGB(
+					'		{00BFFF}ВИП Чат:\n' ..
+					'			{E6E6FA}/vr - отправить обычное сообщение в ВИП чат\n' ..
+					'			{E6E6FA}/vra - отправить рекламное сообщение в ВИП чат\n')
+					imgui.PopFont()
+					imgui.EndChild()
+					
+					imgui.SetCursorPos(imgui.ImVec2(280.000000,250.000000));
+					imgui.PushFont(mainfont)
+					imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.662, 0.55))
+					if imgui.Button(fa.ICON_FA_TIMES, imgui.ImVec2(50, 50)) then 
+						popupwindow.switch()
+						checkpopupwindow = true
+					end
+					if checkpopupwindow and popupwindow.alpha <= 0.09 then imgui.CloseCurrentPopup() checkpopupwindow = false end
+					imgui.PopStyleVar(1)
+					imgui.PopFont()
+
+					imgui.SetCursorPos(imgui.ImVec2(180.000000,250.000000));
+					imgui.PushFont(mainfont)
+					imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign , imgui.ImVec2(0.665, 0.55))
+					if imgui.Button(fa.ICON_FA_ANGLE_DOUBLE_LEFT, imgui.ImVec2(50, 50)) then 
+						list = 2
+					end
+					imgui.PopStyleVar(1)
+					imgui.PopFont()
+					imgui.EndPopup()
+				end
 
 			end
 			imgui.PopStyleVar()
@@ -3092,14 +3241,23 @@ function hotkeylist()
 			imgui.EndChild()
 
 			imgui.SetCursorPos(imgui.ImVec2(45.000000,230.000000));	
-			imgui.BeginChild("CheatFuncs	",imgui.ImVec2(220, 55), true)
+			imgui.BeginChild("CheatFuncs",imgui.ImVec2(220, 85), true)
 			imgui.CenterTextColoredRGB('{FF0000}Чит-Функции')
 
 					imgui.SetCursorPos(imgui.ImVec2(5,25 + 3));
-					imgui.TextColoredRGB('Анти-Фриз')
+					imgui.TextColoredRGB('АнтиФриз')
+					imgui.ezHint('Размораживает игрока и сбивает анимацию.',
+					hpfont, mainfont, 76.000000, 26.000000)
 					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 25))
 					if imgui.HotKey(u8'##antfrz', antifreeze, 90) then
 						hcfg.antifreeze = {unpack(antifreeze.v)}
+						ecfg.save(hkname, hcfg)
+					end
+					imgui.SetCursorPos(imgui.ImVec2(5,50 + 3));
+					imgui.TextColoredRGB('Коллизия винтов')
+					imgui.SetCursorPos(imgui.ImVec2(imgui.CalcTextSize(u8('Открытие скрипта')).x + 10, 50))
+					if imgui.HotKey(u8'##vintcoll_key', vintcoll_key, 90) then
+						hcfg.vintcoll_key = {unpack(vintcoll_key.v)}
 						ecfg.save(hkname, hcfg)
 					end
 
@@ -3122,7 +3280,7 @@ function piemenulist()
 					piebinder.sn = 1 + ((c - 1) * 5)
 				end
 				imgui.SetCursorPos(imgui.ImVec2(8, -15 + (c * 25)))
-				if ffi.string(piebinder.category[c]) == "" then imgui.TextColoredRGB("{FFFFFF}"..c.." {00FF00}Категория") else imgui.TextColoredRGB(c..". "..u8:decode(ffi.string(piebinder.category[c]))) end
+				if ffi.string(piebinder.category[c]) == "" then imgui.TextColoredRGB("{FFFFFF}"..c..". {00FF00}Категория") else imgui.TextColoredRGB(c..". "..u8:decode(ffi.string(piebinder.category[c]))) end
 			end
 			imgui.EndChild()
 		imgui.SameLine()
@@ -3256,7 +3414,7 @@ function playVolume(arg, state)
 	if doesFileExist(arg) then
 		local audio = loadAudioStream(arg)
 		setAudioStreamState(audio, state)
-		setAudioStreamVolume(audio, slider.kolvolume[0])
+		setAudioStreamVolume(audio, (slider.kolvolume[0] / 100))
 	end
 end
 
@@ -3273,15 +3431,24 @@ function hideCar(id)
 	raknetEmulRpcReceiveBitStream(165, bs)
 	raknetDeleteBitStream(bs)
 end
+local tochki = 0
+local tochkiall = 0
 
 function sampev.onServerMessage(color, text)
 	--if text:find(".+") then print(text) end
-	if text:find('Увы%, вам не удалось улучшить предмет.+') then
-		--sampSendClickTextdraw(2078)
+--[[	if text:find('Увы%, вам не удалось улучшить предмет.+') then
+		sampSendClickTextdraw(tochid)
+		tochki = tochki + 1
+		tochkiall = tochkiall + 1
 	end
+	if text:find('Успех! Вам удалось улучшить предмет.+') then
+		text = text..string.format(' (Потрачено на попытку: %s точилок. Потрачено всего за сеанс: %s)', tochki + 1, tochkiall + 1)
+		tochki = 0
+		return {color, text}
+	end	]]
 	if boolhud.notification[0] then
 		if text:find('Вам был добавлен предмет.+') then
-			local item = text:match("Вам был добавлен предмет '(.+)'. Чтобы")
+			local item = text:match("Вам был добавлен предмет '(.+)'%..+")
 			toast.Show(u8('{ffffff}Вам был добавлен предмет {ffff00}'..item), toast.TYPE.INFO, 6)
 			playVolume(notf, 1)
 		end
@@ -3336,6 +3503,19 @@ function sampev.onServerMessage(color, text)
 			timerState = true
 		end
 	end
+	
+	if features.vrr[0] then
+		if string.find(text, "[Ошибка] {FFFFFF} После последнего сообщения в этом чате нужно подождать 3 секунды", 1, true) then
+			return false
+		elseif string.find(text, "[Ошибка] {FFFFFF}Для возможности повторной отправки сообщения в этот чат осталось", 1, true) then
+			return false
+		end
+
+		if text:find("^Вы заглушены") or text:find("Для возможности повторной отправки сообщения в этот чат") then
+			PREVIOUS_SEND = os.clock()
+			vrtext = nil
+		end
+	end
 end
 
 function setTime(hours)
@@ -3346,15 +3526,25 @@ function setWeather(weather)
 	forceWeatherNow(weather)
 end
 
+function sampev.onSendCommand(cmd)
+	if features.vrr[0] then
+		local _ad, _text = cmd:match("^/vr(a?) (.+)")
+		if _text ~= nil and vrtext ~= _text then
+			if not string.find(_text, "^%s+$") then
+				ad = (_ad == "a")
+				attempts = 0
+				vrtext = _text
+				return false
+			end
+		end
+	end
+end
+
 function sampev.onShowTextDraw(id, data)
-	if boolhud.hud[0] then
-		if data.text:find(".+ HP") or data.text:find(".+ H") then
-			return false
-		end
-		if data.text:find('You are hungry!') or data.text:find('You are very hungry!') then
-			hungeranim()
-			return false
-		end
+	local dpx = tostring(data.position.x)
+	local dpy = tostring(data.position.y)
+	if dpx == tostring(185.66426086426) and dpy == tostring(258.65274047852) then
+		tochid = id
 	end
 
 	if boolfixes.fixgps[0] == true then
@@ -3363,40 +3553,11 @@ function sampev.onShowTextDraw(id, data)
 		end
 	end
 
-	if carfuncs.autotwinturbo[0] then
-		if isCharInAnyCar(playerPed) then
-			if data.text:find('~n~~n~~n~~n~~n~~n~~n~~n~~w~Style: ~g~Comfort!') then
-				ezMessage("AutoTT: TwinTurbo включён.")
-				sampSendChat('/style')
-			end
-		end
-	end
-	if data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK~n~/lock" or data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK~n~/lock" then
-		data.text = "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~g~ UNLOCK"
-		return {id, data}
-	elseif data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~CAR~r~ LOCK~n~/lock" or data.text == "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~r~ LOCK~n~/lock" then
-		data.text = "~w~~n~~n~~n~~n~~n~~n~~n~~n~CAR~r~ LOCK"
-		return {id, data}
-	end
-	--print(data.text)
 	if data.text == "…H‹EHЏAP’" or data.text == "INVENTORY" then
 		inv = id
 	end
 	if data.text == "A" or data.text == "rizona" or data.text == "mesa" or data.text:find("~y~PAYDAY~n~Launcher.+") or data.text:find("Armour") then
 		return false
-	end
-
-	if data.position.x == 620 and data.position.y == 230 then
-		data.text = "~n~"..data.text
-		return {id, data}
-	end
-
-	if features.correctdmg[0] then
-		if data.text:find('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed %d+ Sec.') then
-			dmgtime = data.text:match('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed (%d+) Sec.')
-			data.text = string.format(conv("~n~~n~~n~~n~~n~~n~~n~~n~~y~Осталось:~n~~w~%s"), get_clock(dmgtime))
-			return {id, data}
-		end
 	end
 
 	if carfuncs.autofill[0] == true then
@@ -3441,6 +3602,32 @@ function sampev.onShowTextDraw(id, data)
 	end
 end
 
+function sampev.onDisplayGameText(style, time, text)
+	if carfuncs.autotwinturbo[0] then
+		if isCharInAnyCar(playerPed) then
+			if text:find('~n~~n~~n~~n~~n~~n~~n~~n~~w~Style: ~g~Comfort!') then
+				ezMessage("AutoTT: TwinTurbo включён.")
+				sampSendChat('/style')
+			end
+		end
+	end
+	--if text:find('.+') then print(text) end
+		
+	if boolfixes.fixgps[0] == true then
+		if text:find("GPS: ON") then
+			return false
+		end
+	end
+
+	if text:find(".+ HP") or text:find(".+ H") or text:find("~y~PAYDAY~n~Launcher.+") then
+		return false
+	end
+	if text:find('You are hungry!') or text:find('You are very hungry!') then
+		hungeranim()
+		return false
+	end
+end
+
 function hungeranim()
 	local potok = lua_thread.create(function()
 		colorhunger.switch()
@@ -3466,7 +3653,7 @@ function sampev.onSendGiveDamage(playerId, damage, weapon, bodypart)
 	if features.kolokol[0] then
 		local audio = loadAudioStream('moonloader/resource/ezHelper/bang.mp3')
 		setAudioStreamState(audio, 1)
-		setAudioStreamVolume(audio, slider.kolvolume[0])
+		setAudioStreamVolume(audio, slider.kolvolume[0] / 100)
 	end
 end
 
@@ -3583,6 +3770,20 @@ function sampev.onShowDialog(id, style, title, button1, button2, text)
 		fixxx = false
 		return false
 	end
+	
+	if features.vrr[0] then
+		if vrtext ~= nil and string.find(text, "Ваше сообщение является рекламой?") then
+			sampSendDialogResponse(id, ad and 1 or 0, nil, nil)
+			PREVIOUS_SEND = os.clock()
+			vrtext = nil
+			return false
+		end
+	end
+end
+
+function set_alpha(color, alpha)
+    color = bit.band(color, 0x00ffffff)
+    return bit.bor(bit.lshift(alpha, 24), color)
 end
 
 function ShowMessage(text, title, style)
@@ -3876,7 +4077,7 @@ function files_add()
 		end)
 
 	end
-	if not doesFileExist('moonloader\\resource\\ezHelper\\arz07.png') or not doesFileExist('moonloader\\resource\\ezHelper\\logo\\NewYear.png') then
+	if not doesFileExist('moonloader\\resource\\ezHelper\\arz07.png') or not doesFileExist('moonloader\\resource\\ezHelper\\logo\\easter.png') then
 		ezMessage("Загрузка картинок худа...")
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/arz07.png", getWorkingDirectory().."/resource/ezHelper/arz07.png", function(id, status, p1, p2) end)
 		
@@ -3885,52 +4086,14 @@ function files_add()
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/Halloween.png", getWorkingDirectory().."/resource/ezHelper/logo/Halloween.png", function(id, status, p1, p2) end)
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/HiTech.png", getWorkingDirectory().."/resource/ezHelper/logo/HiTech.png", function(id, status, p1, p2) end)
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/NewYear.png", getWorkingDirectory().."/resource/ezHelper/logo/NewYear.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/saintV.png", getWorkingDirectory().."/resource/ezHelper/logo/saintV.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/easter.png", getWorkingDirectory().."/resource/ezHelper/logo/easter.png", function(id, status, p1, p2) end)
 		
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/XPayDay.png", getWorkingDirectory().."/resource/ezHelper/XPayDay.png", function(id, status, p1, p2) end)
 		
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/0.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/0.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/1.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/1.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/2.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/2.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/3.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/3.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/4.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/4.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/5.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/5.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/6.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/6.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/7.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/7.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/8.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/8.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/9.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/9.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/10.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/10.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/11.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/11.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/12.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/12.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/13.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/13.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/14.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/14.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/15.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/15.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/16.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/16.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/17.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/17.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/18.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/18.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/22.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/22.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/23.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/23.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/24.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/24.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/25.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/25.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/26.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/26.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/27.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/27.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/28.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/28.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/29.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/29.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/30.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/30.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/31.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/31.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/32.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/32.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/33.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/33.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/34.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/34.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/35.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/35.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/36.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/36.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/37.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/37.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/38.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/38.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/39.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/39.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/40.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/40.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/41.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/41.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/42.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/42.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/43.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/43.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/44.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/44.png", function(id, status, p1, p2) end)
-		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/45.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/45.png", function(id, status, p1, p2) end)
+		for i = 0, 45 do
+			downloadUrlToFile(string.format("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/%s.png", i), getWorkingDirectory()..string.format("/resource/ezHelper/WeaponsIcon/%s.png", i), function(id, status, p1, p2) end)
+		end
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/WeaponsIcon/46.png", getWorkingDirectory().."/resource/ezHelper/WeaponsIcon/46.png", function(id, status, p1, p2)
 			if status == 58 then
 				ezMessage("Загрузка картинок {00FF00}успешно завершена. {FFFFFF}Перезагружаюсь...")
@@ -4080,7 +4243,7 @@ function imgui.BeginWin11Menu(title, var, stateButton, selected, isOpened, sizeC
 	elseif selected[0] == "Hotkey" then
 	imgui.TextColoredRGB("{FFFFFF}"..title.." | {1E90FF}Меню хоткеев")
 	elseif selected[0] == "piemenu" then
-	imgui.TextColoredRGB("{FFFFFF}"..title.." | {1E90FF}Круговое меню {FF0000}(NEW)")
+	imgui.TextColoredRGB("{FFFFFF}"..title.." | {1E90FF}Круговое меню")
 	elseif selected[0] == 4 then
 	imgui.TextColoredRGB("{FFFFFF}"..title.." | {1E90FF}О скрипте")
 	end
@@ -4691,7 +4854,7 @@ function getKeysName(keys)
     else
        local tKeysName = {}
        for k, v in ipairs(keys) do
-          tKeysName[k] = vkeys.id_to_name(v)
+        	tKeysName[k] = vkeys.id_to_name(v)
        end
        return tKeysName
     end
@@ -4725,6 +4888,7 @@ function imgui.HotKey(name, keys, width)
     imgui.PushStyleVarVec2(imgui.StyleVar.ButtonTextAlign, imgui.ImVec2(0.5, 0.5))
     if imgui.Button((tostring(sKeys):len() == 0 and u8"Свободно" or sKeys) .. name, imgui.ImVec2(width, 0)) then
         tHotKeyData.edit = name
+		ezMessage('Чтобы убрать клавишу, нажмите {87CEFA}BACKSPACE')
     end
     imgui.PopStyleVar()
     return bool
@@ -4761,7 +4925,8 @@ addEventHandler("onWindowMessage", function (msg, wparam, lparam)
             consumeWindowMessage(true, true)
         end
     end
-    if msg == wm.WM_KEYDOWN or msg == wm.WM_SYSKEYDOWN then
+	if tHotKeyData.edit then
+    if msg == wm.WM_KEYDOWN or msg == wm.WM_SYSKEYDOWN or msg == wm.WM_XBUTTONDOWN then
         if tHotKeyData.edit ~= nil and wparam == vkeys.VK_ESCAPE then
             tKeys = {}
             tHotKeyData.edit = nil
@@ -4769,13 +4934,24 @@ addEventHandler("onWindowMessage", function (msg, wparam, lparam)
         end
 		
         if tHotKeyData.edit ~= nil and wparam == VK_ESCAPE or wparam == VK_BACK or wparam == VK_F8 then
+			wparam = nil
             tHotKeyData.save = {tHotKeyData.edit, {}}
             tHotKeyData.edit = nil
             consumeWindowMessage(true, true)
         end
         local num = getKeyNumber(wparam)
+		print(wparam)
         if num == -1 then
-            tKeys[#tKeys + 1] = wparam
+			if wparam == 131136 then
+				wp = 6
+            	tKeys[#tKeys + 1] = wp
+			elseif wparam == 65568 then
+				wp = 5
+				tKeys[#tKeys + 1] = wp
+			else
+				tKeys[#tKeys + 1] = wparam
+			end
+			
             if tHotKeyData.edit ~= nil then
                 if not isKeyModified(wparam) and #tKeys ~= 3 and unpack(tKeys) ~= 117 and unpack(tKeys) ~= 84 and unpack(tKeys) ~= 118 and unpack(tKeys) ~= 9 and unpack(tKeys) ~= 13 then
 					print(unpack(tKeys))
@@ -4800,4 +4976,5 @@ addEventHandler("onWindowMessage", function (msg, wparam, lparam)
             consumeWindowMessage(true, true)
         end
     end
+end
 end)
