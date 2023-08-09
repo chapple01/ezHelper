@@ -104,6 +104,7 @@ local logversionText2 = [[26.08.2022 - 1.4.4 - Добавил фикс бага новых окон лаун
 28.02.2023 - 1.5.8 - Исправил баг с белыми квадратиками вместо шрифта, добавил новый логотип, PieBinder выходит из БЕТА версии. Оптимизировал код.
 19.03.2023 - 1.5.9 - Исправил баг с PieMenu. Добавил в настройки виджета выбор часового пояса. Добавил обводку текста в виджете. Исправил отображение времени в виджете. Убрал функцию HideFamTag, так как в ней уже нет необходимости. Добавил новую систему с уведомлениями о новых предметах.
 30.04.2023 - 1.6.0 - Добавил новую иконку в худ. Исправил загрузку для новых иконок. Новая функция "AntiParachute". Исправил баг с хоткеями, когда ложно срабатывал ALT. Добавил возможность биндить на боковые кнопки мыши. В функцию АнтиФриз добавил сбив анимации. Теперь размораживает персонажа и сбивает анимаицию в одной функции. Добавил возможность удалять хоткеи. Исправил отображение звука в CSK.
+09.08.2023 - 1.6.1 - Исправил неработоспособность CorrectDMG. Отключил RHUD на Vice City. Добавил новые иконки в RHUD. Добавил новые быстрые команды. Исправил AutoFill. Изменил функцию MAC, теперь называется NotfAC и вместо музыки оповещает коротким уведомлением.
 ]]
 
 	-----===[[INIFILE]]===-----
@@ -183,6 +184,7 @@ local onlineIni = inicfg.load({
 
 if not doesFileExist("moonloader/config/ezHelper/ezHelper.ini") then inicfg.save(mainIni, directIni) end
 if not doesFileExist("moonloader/config/ezHelper/ezOnline.ini") then inicfg.save(onlineIni, directOIni) end
+if doesFileExist("moonloader\\resource\\ezHelper\\oldarzmusic.mp3") then os.remove('moonloader\\resource\\ezHelper\\oldarzmusic.mp3') end
 
 	-----===[[SOUNDS]]===-----
 local panic = getGameDirectory().."\\moonloader\\resource\\ezHelper\\panic.mp3"
@@ -250,6 +252,7 @@ local new, str, sizeof = imgui.new, ffi.string, ffi.sizeof
 local renderWindow = new.bool(false)
 local TimeWeatherWindow = new.bool(false)
 local updatewindow = new.bool(false)
+local chatcalc = new.bool(true)
 local sesOnline = new.int(0)
 local oxygen = new.int(100)
 
@@ -602,7 +605,10 @@ imgui.OnInitialize(function()
 	logo5 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\NewYear.png')
 	logo6 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\saintV.png')
 	logo7 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\easter.png')
-	logo = {logo1, logo2, logo3, logo4, logo5, logo6, logo7}
+	logo8 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\spring.png')
+	logo9 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\May.png')
+	logo10 = imgui.CreateTextureFromFile(getWorkingDirectory()..'\\resource\\ezHelper\\logo\\Summer.png')
+	logo = {logo1, logo2, logo3, logo4, logo5, logo6, logo7, logo8, logo9, logo10}
 
 	xPD = imgui.CreateTextureFromFile(getWorkingDirectory() .. "\\resource\\ezHelper\\XPayDay.png")
 
@@ -676,7 +682,7 @@ function main()
     applySampfuncsPatch()
     lua_thread.create(time)
 	lua_thread.create(fixcef)
-	mac = bass.BASS_StreamCreateFile(false, "moonloader\\resource\\ezHelper\\oldarzmusic.mp3", 0, 0, 0)
+	mac = bass.BASS_StreamCreateFile(false, "moonloader\\resource\\ezHelper\\notfac.mp3", 0, 0, 0)
 	lua_thread.create(function()
 		while true do wait(0)
 			if TimeWeather.twtoggle[0] == true then
@@ -708,7 +714,7 @@ function main()
 		updatewindow[0] = true
     end
 	files_add()
-
+	
 	sampRegisterChatCommand("ezhelper", function()
 		if spawn == true then
 			rwindow.switch()
@@ -823,6 +829,12 @@ function main()
 			ezMessage('Удаление машин в зоне стрима {FF0000}отключено.')
 		end	
 	end)
+	sampRegisterChatCommand("ol", function()
+		sampSendChat('/oillist')
+	end)
+	sampRegisterChatCommand("ogl", function()
+		sampSendChat('/oilgroundlist')
+	end)
 	
 	local font = renderCreateFont("Calibri", 12, 9)
 	addEventHandler("onD3DPresent", function()
@@ -856,6 +868,18 @@ function main()
 		end
 	end)
 
+	sampRegisterChatCommand('getsk',function (arg)
+        local id = tonumber(arg)
+        if id then
+            result, ped = sampGetCharHandleBySampPlayerId(id)
+            if result then
+                sampAddChatMessage('Игрок: '..sampGetPlayerNickname(id)..' ['..id..'], скин: '..getCharModel(ped), -1)
+            else
+                sampAddChatMessage('не удалось получить скин игрока, вероятно, он вне зоны стрима', -1)
+            end
+        end
+    end)
+
 	
 	if onlineIni.onDay.today ~= os.date("%a") then 
 		onlineIni.onDay.today = os.date("%a")
@@ -877,6 +901,8 @@ function main()
     	lua_thread.create(carfunc)
 		lua_thread.create(strobe)
 		lua_thread.create(_rfunc)
+	
+	_, pid = sampGetPlayerIdByCharHandle(playerPed)
 
     while true do
 		wait(0)
@@ -1032,6 +1058,8 @@ function fixes_func()
 	else
 		memory.hex2bin('E870E7', 0x5704CB, 3)
 	end
+
+	writeMemory(0x96916E, 1, 1, false)
 end
 
 
@@ -1284,10 +1312,61 @@ function hotkeyactivate()
 	end
 end
 
+local caltChat = imgui.OnFrame(
+	function() return chatcalc[0] end,
+	function(c)
+		if spawn == true then
+			if rng_ok then
+				if rng.checkW() then
+					c.HideCursor = false
+				else
+					c.HideCursor = true
+				end
+			else
+				c.HideCursor = true
+			end
+
+			local input = sampGetInputInfoPtr()
+			local input = getStructElement(input, 0x8, 4)
+			local windowPosX = getStructElement(input, 0x8, 4)
+			local windowPosY = getStructElement(input, 0xC, 4)
+
+			local intext = sampGetChatInputText()
+			if intext ~= nil and intext ~= '' then
+				if intext:find('%d+') and intext:find('[-+/*^]') and not intext:find('%a+') then
+					ok, number = pcall(load('return '..intext))
+					result = 'Результат: '..number
+				end
+				if intext:find('%d+%%%d+') and not intext:find('%a+') then
+					local number1, number2 = intext:match('(%d+)%%(%d+)')
+					local number = number1*number2/100
+					ok, number = pcall(load('return '..number))
+					result = 'Результат: '..number
+				end
+				if intext:find('%d+%%') and not intext:find('%d+%%%d+') then
+					ok = false
+				end
+			else
+				ok = false
+			end
+			
+			if sampIsChatInputActive() and ok then
+				imgui.SetNextWindowPos(imgui.ImVec2(windowPosX, windowPosY + 30 + 15), imgui.Cond.FirstUseEver)
+				imgui.SetNextWindowSize(imgui.ImVec2(result:len()*10, 30))
+				imgui.Begin('Solve', window, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove)
+				imgui.PushFont(mainfont)
+				imgui.SetCursorPosY(7)
+				imgui.CenterTextColoredRGB(number_separator(result))
+				imgui.PopFont()
+				imgui.End()
+			end
+		end
+	end
+)
+
 local hudFrame = imgui.OnFrame(
 	function() return boolhud.show[0] and boolhud.hud[0] end,
 	function(h)
-		imgui.DisableInput = false
 		if rng_ok then
 			if rng.checkW() then
 				h.HideCursor = false
@@ -1299,283 +1378,288 @@ local hudFrame = imgui.OnFrame(
 		end
 		displayHud(false)
 		if spawn == true then
-			
-			local textinv = sampTextdrawGetString(inv)
-			if textinv == "…H‹EHЏAP’" or textinv == "INVENTORY" then
-				oiv = true
-			else
-				oiv = false 
-			end
-			if not isPauseMenuActive() and sampGetGamestate() == 3 and oiv == false and sampGetChatDisplayMode() ~= 0 then
-				local DL = imgui.GetBackgroundDrawList()
-
-				local radius = 17
-				local polygons = radius * 1.5
-
-				local health = getCharHealth(PLAYER_PED)
-				local hunger = math.floor((mainIni.hud.hun / 54.4) * 100)
-				local armour = getCharArmour(PLAYER_PED)
-				local money = getPlayerMoney(Player)
-				local wanted = memory.getuint8(0x58DB60)
-				imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 1.28, sizeY * 0.01 / 100), imgui.Cond.Always)
-				imgui.SetNextWindowSize(imgui.ImVec2(420, 290), imgui.Cond.Always)
-				imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.2, 0.2, 0.2, 0))
-				imgui.Begin('##1', boolhud.show, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
-				DL:AddImage(slogo, imgui.ImVec2(sizeX / 1.069, 17), imgui.ImVec2(sizeX / 1.069 + 125, 17 + 54))
-				if boolhud.lid[0] >= 1 and boolhud.lid[0] <= 4 then
-					DL:AddImage(logo[boolhud.lid[0]], imgui.ImVec2(sizeX / 1.1745, 16), imgui.ImVec2(sizeX / 1.1745 + 50, 16 + 50))
-				else
-					DL:AddImage(logo[boolhud.lid[0]], imgui.ImVec2(sizeX / 1.1765, 16), imgui.ImVec2(sizeX / 1.1765 + 55, 16 + 55))
-				end
-				local xpdint = sampGetCurrentServerName():match("%d")
-				if xpdint ~= nil then
-					imgui.PushFont(hudfont7)
-					DL:AddImage(xPD, imgui.ImVec2(sizeX / 1.29, 27), imgui.ImVec2(sizeX / 1.29 + 31, 27 + 30))
-					DL:AddText(imgui.ImVec2(sizeX / 1.28685, 34), 0xFFFFFFFF, "X"..xpdint)
-					imgui.PopFont()
-				end
-				DL:AddCircleFilled(imgui.ImVec2(sizeX / 1.048, 44), radius - 4, Convert(0x788b94), polygons)
-				imgui.PushFont(hudfont5)
-				local size = imgui.ImVec2((radius * 5.3) - 10, (radius * 5.5) - 10)
-				DL:AddText(imgui.ImVec2(sizeX / 1.05, 36.0), 0xFFFFFFFF, "7")
-				DL:AddText(imgui.ImVec2(sizeX / 1.038, 36.0), 0xFFFFFFFF, "Mesa")
-				DL:AddText(imgui.ImVec2(sizeX / 1.1295, 51.0), 0xFF000000, "Role Play")
-				DL:AddText(imgui.ImVec2(sizeX / 1.12955, 50.0), Convert(0xadbabf), "Role Play")
-				imgui.PopFont()
-				imgui.PushFont(hudfont6)
-				DL:AddText(imgui.ImVec2(sizeX / 1.24155, 24.0), 0xFF000000, fa.ICON_FA_USER)
-				DL:AddText(imgui.ImVec2(sizeX / 1.24155, 23.0), Convert(0xc0cacd), fa.ICON_FA_USER)
-				DL:AddText(imgui.ImVec2(sizeX / 1.22555, 25.0), 0xFF000000, tostring(pid))
-				DL:AddText(imgui.ImVec2(sizeX / 1.22555, 24.0), 0xFFFFFFFF, tostring(pid))
-				DL:AddText(imgui.ImVec2(sizeX / 1.24355, 51.0), 0xFF000000, fa.ICON_FA_USERS)
-				DL:AddText(imgui.ImVec2(sizeX / 1.24355, 50.0), Convert(0xc0cacd), fa.ICON_FA_USERS)
-				DL:AddText(imgui.ImVec2(sizeX / 1.22555, 52.0), 0xFF000000, tostring(servonl))
-				DL:AddText(imgui.ImVec2(sizeX / 1.22555, 51.0), 0xFFFFFFFF, tostring(servonl))
-				imgui.PopFont()
-				imgui.PushFont(hudfont4)
-				DL:AddText(imgui.ImVec2(sizeX / 1.13055, 26.0), 0xFF000000, "Arizona")
-				DL:AddText(imgui.ImVec2(sizeX / 1.13055, 25.0), 0xFFFFFFFF, "Arizona")
-				imgui.PopFont()
-				imgui.SetCursorPos(imgui.ImVec2(60, 115)) imgui.PushFont(hudfont2) imgui.IconColoredRGB("{000000}"..fa.ICON_FA_HEART)	imgui.PopFont()
-				imgui.SetCursorPos(imgui.ImVec2(60, 113)) imgui.PushFont(hudfont2) imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_HEART)	imgui.PopFont()	imgui.SameLine()
-				imgui.SetCursorPos(imgui.ImVec2(90, 117))
-				imgui.CustomAnimProgressBar("##shadow", 100, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0, 0, 0, 1), imgui.ImVec4(0, 0, 0, 1))
-				imgui.SetCursorPos(imgui.ImVec2(90, 115))
-				imgui.CustomAnimProgressBar("health", health, boolhud.maxhp[0], 4, 340, 111, imgui.ImVec2(175,20), imgui.ImVec4(0.4, 0,0, 1), imgui.ImVec4(0.9, 0.2, 0.2, 1))
-				imgui.SetCursorPos(imgui.ImVec2(50, 155)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{000000}"..fa.ICON_FA_SHIELD_ALT) imgui.PopFont()
-				imgui.SetCursorPos(imgui.ImVec2(50, 153)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_SHIELD_ALT) imgui.PopFont()
-				imgui.SetCursorPos(imgui.ImVec2(80, 157))
-				imgui.CustomAnimProgressBar("##shadow", 100, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0, 0, 0, 1), imgui.ImVec4(0, 0, 0, 1))
-				imgui.SetCursorPos(imgui.ImVec2(80, 155))
-				imgui.CustomAnimProgressBar("armour", armour, 100, 4, 325, 151, imgui.ImVec2(175,20), imgui.ImVec4(0.35, 0.35,0.35, 1), imgui.ImVec4(0.6, 0.6, 0.6, 1))
-				imgui.SetCursorPos(imgui.ImVec2(60, 195)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{000000}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
-				imgui.SetCursorPos(imgui.ImVec2(60, 193)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
-				imgui.PushStyleVarFloat(imgui.StyleVar.Alpha, colorhunger.alpha)
-				imgui.SetCursorPos(imgui.ImVec2(60, 193)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{fa0000}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
-				imgui.PopStyleVar()
-				imgui.SetCursorPos(imgui.ImVec2(90, 197))
-				imgui.CustomAnimProgressBar("##shadow", 100, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0, 0, 0, 1), imgui.ImVec4(0, 0, 0, 1))
-				imgui.SetCursorPos(imgui.ImVec2(90, 195))
-				imgui.CustomAnimProgressBar("satiety", hunger, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0.6, 0.4, 0, 1), imgui.ImVec4(1, 0.75,0, 1))
-				if isCharInWater(PLAYER_PED) or isCharInAnyCar(playerPed) and isCarInWater(storeCarCharIsInNoSave(playerPed)) then
-					imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.01 * (100 - oxygen[0]), 0, 1 / ((100 - oxygen[0]) * 0.025), 1))
-					imgui.PushStyleColor(imgui.Col.FrameBg, imgui.ImVec4(0,0,0,1))
-					imgui.SetCursorPos(imgui.ImVec2(272.25, 105))
-					oxygen[0] = getCharOxygen()
-					addons.CircularProgressBar(oxygen, 56, 6)
-					imgui.PopStyleColor(2)
-				end
-
-				hp = sampGetPlayerHealth(pid)
-				razn = hp - lasthp
-				if actv == true then
-					if razn >1 and razn ~= 0 and razn then
-						if razn >=10 then
-							imgui.PushFont(hudfont2)
-							imgui.SetCursorPos(imgui.ImVec2(12, 113));
-							imgui.IconColoredRGB("{000000}+"..razn)
-							imgui.SetCursorPos(imgui.ImVec2(12, 112));
-							imgui.IconColoredRGB("{FF0000}+"..razn)
-							imgui.PopFont()
-						else
-							imgui.PushFont(hudfont2)
-							imgui.SetCursorPos(imgui.ImVec2(25, 113));
-							imgui.IconColoredRGB("{000000}+"..razn)
-							imgui.SetCursorPos(imgui.ImVec2(25, 112));
-							imgui.IconColoredRGB("{FF0000}+"..razn)
-							imgui.PopFont()
-						end
-					end
-				end
-
-				imgui.PushFont(hudfont3)
-				local text = int_separator(money)
-				local len = imgui.CalcTextSize(text).x
-				DL:AddText(imgui.ImVec2( sizeX / 1.1 - radius - len, 230.5), 0xFF000000, text)
-				DL:AddText(imgui.ImVec2( sizeX / 1.1 - radius - len, 228.5), 0xFFFFFFFF, text)
-				imgui.PopFont()
-				imgui.PushFont(hudfont1)
-				DL:AddCircleFilled(imgui.ImVec2(sizeX / 1.097, 242), radius, 0xFF000000, polygons)
-				DL:AddCircleFilled(imgui.ImVec2(sizeX / 1.097, 240), radius, 0xFF00FF00, polygons)
-				DL:AddText(imgui.ImVec2(sizeX / 1.0978, 229), 0xFF000000, fa.ICON_FA_DOLLAR_SIGN)
-
-
-				local weapon_id = getCurrentCharWeapon(PLAYER_PED)
-				if weapons[weapon_id] ~= nil then
-					local size = imgui.ImVec2((radius * 5.3) - 10, (radius * 5.5) - 10)
-					local A = 0
-					if weapon_id == 0 then
-						A = imgui.ImVec2(1831 + 3 - size.x / 2, 160 - size.y / 2)
-					elseif weapon_id == 25 then
-						A = imgui.ImVec2(1831 + 3 - size.x / 2, 164 - size.y / 2)
-					elseif weapon_id == 28 then
-						A = imgui.ImVec2(1830 + 3 - size.x / 2, 166 - size.y / 2)
-					elseif weapon_id == 30 then
-						A = imgui.ImVec2(1831 + 3 - size.x / 2, 166 - size.y / 2)
-					elseif weapon_id == 31 then
-						A = imgui.ImVec2(1828 + 3 - size.x / 2, 166 - size.y / 2)
-					elseif weapon_id == 34 then
-						A = imgui.ImVec2(1826 + 3 - size.x / 2, 165 - size.y / 2)
-					else
-						A = imgui.ImVec2(1830 + 3 - size.x / 2, 162 - size.y / 2)
-					end
-					local B = imgui.ImVec2(A.x + size.x, A.y + size.y)
-					DL:AddCircle(imgui.ImVec2(sizeX / 1.048, 164.5), radius * 3.3, 0xFF000000, polygons + 10, 4)
-					DL:AddImage(weapons[weapon_id], A, B)
-				end
+			local servername = sampGetCurrentServerName()
+			if not servername:find("Vice City") then
+				imgui.DisableInput = false
 				
-				local ammo = getAmmoInCharWeapon(PLAYER_PED, weapon_id)
-				if ammo > 0 then
-					local ammoInClip = getAmmoInClip()
-					local weapons_without_clip = {25, 33, 34, 35, 36, 39}
-					local no_shooting_weapons = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 40, 44, 45, 46}
-					local lastammo = ammo - ammoInClip
-					local text = ""
-					if lastammo == 0 then
-						text = string.format("%d", ammoInClip)
+				local textinv = sampTextdrawGetString(inv)
+				if textinv == "…H‹EHЏAP’" or textinv == "INVENTORY" then
+					oiv = true
+				else
+					oiv = false 
+				end
+				if not isPauseMenuActive() and sampGetGamestate() == 3 and oiv == false and sampGetChatDisplayMode() ~= 0 then
+					local DL = imgui.GetBackgroundDrawList()
+
+					local radius = 17
+					local polygons = radius * 1.5
+
+					local health = getCharHealth(PLAYER_PED)
+					local hunger = math.floor((mainIni.hud.hun / 54.4) * 100)
+					local armour = getCharArmour(PLAYER_PED)
+					local money = getPlayerMoney(Player)
+					local wanted = memory.getuint8(0x58DB60)
+					imgui.SetNextWindowPos(imgui.ImVec2(sizeX / 1.28, sizeY * 0.01 / 100), imgui.Cond.Always)
+					imgui.SetNextWindowSize(imgui.ImVec2(420, 290), imgui.Cond.Always)
+					imgui.PushStyleColor(imgui.Col.WindowBg, imgui.ImVec4(0.2, 0.2, 0.2, 0))
+					imgui.Begin('##1', boolhud.show, imgui.WindowFlags.NoResize + imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoTitleBar)
+					DL:AddImage(slogo, imgui.ImVec2(sizeX / 1.069, 17), imgui.ImVec2(sizeX / 1.069 + 125, 17 + 54))
+					if boolhud.lid[0] >= 1 and boolhud.lid[0] <= 4 then
+						DL:AddImage(logo[boolhud.lid[0]], imgui.ImVec2(sizeX / 1.1745, 16), imgui.ImVec2(sizeX / 1.1745 + 50, 16 + 50))
 					else
-						text = string.format("%d/%s", ammoInClip, lastammo)
+						DL:AddImage(logo[boolhud.lid[0]], imgui.ImVec2(sizeX / 1.1765, 16), imgui.ImVec2(sizeX / 1.1765 + 55, 16 + 55))
 					end
-					for _, v in pairs(no_shooting_weapons) do
-						if weapon_id == v then 
-							text = "" 
+					local xpdint = sampGetCurrentServerName():match("%d")
+					if xpdint ~= nil then
+						imgui.PushFont(hudfont7)
+						DL:AddImage(xPD, imgui.ImVec2(sizeX / 1.29, 27), imgui.ImVec2(sizeX / 1.29 + 31, 27 + 30))
+						DL:AddText(imgui.ImVec2(sizeX / 1.28685, 34), 0xFFFFFFFF, "X"..xpdint)
+						imgui.PopFont()
+					end
+					DL:AddCircleFilled(imgui.ImVec2(sizeX / 1.048, 44), radius - 4, Convert(0x788b94), polygons)
+					imgui.PushFont(hudfont5)
+					local size = imgui.ImVec2((radius * 5.3) - 10, (radius * 5.5) - 10)
+					DL:AddText(imgui.ImVec2(sizeX / 1.05, 36.0), 0xFFFFFFFF, "7")
+					DL:AddText(imgui.ImVec2(sizeX / 1.038, 36.0), 0xFFFFFFFF, "Mesa")
+					DL:AddText(imgui.ImVec2(sizeX / 1.1295, 51.0), 0xFF000000, "Role Play")
+					DL:AddText(imgui.ImVec2(sizeX / 1.12955, 50.0), Convert(0xadbabf), "Role Play")
+					imgui.PopFont()
+					imgui.PushFont(hudfont6)
+					DL:AddText(imgui.ImVec2(sizeX / 1.24155, 24.0), 0xFF000000, fa.ICON_FA_USER)
+					DL:AddText(imgui.ImVec2(sizeX / 1.24155, 23.0), Convert(0xc0cacd), fa.ICON_FA_USER)
+					DL:AddText(imgui.ImVec2(sizeX / 1.22555, 25.0), 0xFF000000, tostring(pid))
+					DL:AddText(imgui.ImVec2(sizeX / 1.22555, 24.0), 0xFFFFFFFF, tostring(pid))
+					DL:AddText(imgui.ImVec2(sizeX / 1.24355, 51.0), 0xFF000000, fa.ICON_FA_USERS)
+					DL:AddText(imgui.ImVec2(sizeX / 1.24355, 50.0), Convert(0xc0cacd), fa.ICON_FA_USERS)
+					DL:AddText(imgui.ImVec2(sizeX / 1.22555, 52.0), 0xFF000000, tostring(servonl))
+					DL:AddText(imgui.ImVec2(sizeX / 1.22555, 51.0), 0xFFFFFFFF, tostring(servonl))
+					imgui.PopFont()
+					imgui.PushFont(hudfont4)
+					DL:AddText(imgui.ImVec2(sizeX / 1.13055, 26.0), 0xFF000000, "Arizona")
+					DL:AddText(imgui.ImVec2(sizeX / 1.13055, 25.0), 0xFFFFFFFF, "Arizona")
+					imgui.PopFont()
+					imgui.SetCursorPos(imgui.ImVec2(60, 115)) imgui.PushFont(hudfont2) imgui.IconColoredRGB("{000000}"..fa.ICON_FA_HEART)	imgui.PopFont()
+					imgui.SetCursorPos(imgui.ImVec2(60, 113)) imgui.PushFont(hudfont2) imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_HEART)	imgui.PopFont()	imgui.SameLine()
+					imgui.SetCursorPos(imgui.ImVec2(90, 117))
+					imgui.CustomAnimProgressBar("##shadow", 100, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0, 0, 0, 1), imgui.ImVec4(0, 0, 0, 1))
+					imgui.SetCursorPos(imgui.ImVec2(90, 115))
+					imgui.CustomAnimProgressBar("health", health, boolhud.maxhp[0], 4, 340, 111, imgui.ImVec2(175,20), imgui.ImVec4(0.4, 0,0, 1), imgui.ImVec4(0.9, 0.2, 0.2, 1))
+					imgui.SetCursorPos(imgui.ImVec2(50, 155)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{000000}"..fa.ICON_FA_SHIELD_ALT) imgui.PopFont()
+					imgui.SetCursorPos(imgui.ImVec2(50, 153)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_SHIELD_ALT) imgui.PopFont()
+					imgui.SetCursorPos(imgui.ImVec2(80, 157))
+					imgui.CustomAnimProgressBar("##shadow", 100, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0, 0, 0, 1), imgui.ImVec4(0, 0, 0, 1))
+					imgui.SetCursorPos(imgui.ImVec2(80, 155))
+					imgui.CustomAnimProgressBar("armour", armour, 100, 4, 325, 151, imgui.ImVec2(175,20), imgui.ImVec4(0.35, 0.35,0.35, 1), imgui.ImVec4(0.6, 0.6, 0.6, 1))
+					imgui.SetCursorPos(imgui.ImVec2(60, 195)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{000000}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
+					imgui.SetCursorPos(imgui.ImVec2(60, 193)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{FFFFFF}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
+					imgui.PushStyleVarFloat(imgui.StyleVar.Alpha, colorhunger.alpha)
+					imgui.SetCursorPos(imgui.ImVec2(60, 193)) imgui.PushFont(hudfont1) imgui.IconColoredRGB("{fa0000}"..fa.ICON_FA_UTENSILS) imgui.PopFont()
+					imgui.PopStyleVar()
+					imgui.SetCursorPos(imgui.ImVec2(90, 197))
+					imgui.CustomAnimProgressBar("##shadow", 100, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0, 0, 0, 1), imgui.ImVec4(0, 0, 0, 1))
+					imgui.SetCursorPos(imgui.ImVec2(90, 195))
+					imgui.CustomAnimProgressBar("satiety", hunger, 100, 4, 340, 191, imgui.ImVec2(175,20), imgui.ImVec4(0.6, 0.4, 0, 1), imgui.ImVec4(1, 0.75,0, 1))
+					if isCharInWater(PLAYER_PED) or isCharInAnyCar(playerPed) and isCarInWater(storeCarCharIsInNoSave(playerPed)) then
+						imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.01 * (100 - oxygen[0]), 0, 1 / ((100 - oxygen[0]) * 0.025), 1))
+						imgui.PushStyleColor(imgui.Col.FrameBg, imgui.ImVec4(0,0,0,1))
+						imgui.SetCursorPos(imgui.ImVec2(272.25, 105))
+						oxygen[0] = getCharOxygen()
+						addons.CircularProgressBar(oxygen, 56, 6)
+						imgui.PopStyleColor(2)
+					end
+
+					hp = sampGetPlayerHealth(pid)
+					razn = hp - lasthp
+					if actv == true then
+						if razn >1 and razn ~= 0 and razn then
+							if razn >=10 then
+								imgui.PushFont(hudfont2)
+								imgui.SetCursorPos(imgui.ImVec2(12, 113));
+								imgui.IconColoredRGB("{000000}+"..razn)
+								imgui.SetCursorPos(imgui.ImVec2(12, 112));
+								imgui.IconColoredRGB("{FF0000}+"..razn)
+								imgui.PopFont()
+							else
+								imgui.PushFont(hudfont2)
+								imgui.SetCursorPos(imgui.ImVec2(25, 113));
+								imgui.IconColoredRGB("{000000}+"..razn)
+								imgui.SetCursorPos(imgui.ImVec2(25, 112));
+								imgui.IconColoredRGB("{FF0000}+"..razn)
+								imgui.PopFont()
+							end
 						end
 					end
-					for _, v in pairs(weapons_without_clip) do
-						if weapon_id == v then
-							text = ammo
-							break
+
+					imgui.PushFont(hudfont3)
+					local text = int_separator(money)
+					local len = imgui.CalcTextSize(text).x
+					DL:AddText(imgui.ImVec2( sizeX / 1.1 - radius - len, 230.5), 0xFF000000, text)
+					DL:AddText(imgui.ImVec2( sizeX / 1.1 - radius - len, 228.5), 0xFFFFFFFF, text)
+					imgui.PopFont()
+					imgui.PushFont(hudfont1)
+					DL:AddCircleFilled(imgui.ImVec2(sizeX / 1.097, 242), radius, 0xFF000000, polygons)
+					DL:AddCircleFilled(imgui.ImVec2(sizeX / 1.097, 240), radius, 0xFF00FF00, polygons)
+					DL:AddText(imgui.ImVec2(sizeX / 1.0978, 229), 0xFF000000, fa.ICON_FA_DOLLAR_SIGN)
+
+
+					local weapon_id = getCurrentCharWeapon(PLAYER_PED)
+					if weapons[weapon_id] ~= nil then
+						local size = imgui.ImVec2((radius * 5.3) - 10, (radius * 5.5) - 10)
+						local A = 0
+						if weapon_id == 0 then
+							A = imgui.ImVec2(1831 + 3 - size.x / 2, 160 - size.y / 2)
+						elseif weapon_id == 25 then
+							A = imgui.ImVec2(1831 + 3 - size.x / 2, 164 - size.y / 2)
+						elseif weapon_id == 28 then
+							A = imgui.ImVec2(1830 + 3 - size.x / 2, 166 - size.y / 2)
+						elseif weapon_id == 30 then
+							A = imgui.ImVec2(1831 + 3 - size.x / 2, 166 - size.y / 2)
+						elseif weapon_id == 31 then
+							A = imgui.ImVec2(1828 + 3 - size.x / 2, 166 - size.y / 2)
+						elseif weapon_id == 34 then
+							A = imgui.ImVec2(1826 + 3 - size.x / 2, 165 - size.y / 2)
+						else
+							A = imgui.ImVec2(1830 + 3 - size.x / 2, 162 - size.y / 2)
 						end
+						local B = imgui.ImVec2(A.x + size.x, A.y + size.y)
+						DL:AddCircle(imgui.ImVec2(sizeX / 1.048, 164.5), radius * 3.3, 0xFF000000, polygons + 10, 4)
+						DL:AddImage(weapons[weapon_id], A, B)
 					end
-					local len = imgui.CalcTextSize(tostring(text)).x
-					DL:AddText(imgui.ImVec2(1830 - (len / 2), 200 + radius + 10), 0xFFFFFFFF, tostring(text))
+					
+					local ammo = getAmmoInCharWeapon(PLAYER_PED, weapon_id)
+					if ammo > 0 then
+						local ammoInClip = getAmmoInClip()
+						local weapons_without_clip = {25, 33, 34, 35, 36, 39}
+						local no_shooting_weapons = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 40, 44, 45, 46}
+						local lastammo = ammo - ammoInClip
+						local text = ""
+						if lastammo == 0 then
+							text = string.format("%d", ammoInClip)
+						else
+							text = string.format("%d/%s", ammoInClip, lastammo)
+						end
+						for _, v in pairs(no_shooting_weapons) do
+							if weapon_id == v then 
+								text = "" 
+							end
+						end
+						for _, v in pairs(weapons_without_clip) do
+							if weapon_id == v then
+								text = ammo
+								break
+							end
+						end
+						local len = imgui.CalcTextSize(tostring(text)).x
+						DL:AddText(imgui.ImVec2(1830 - (len / 2), 200 + radius + 10), 0xFFFFFFFF, tostring(text))
+					end
+
+					imgui.PopFont()
+
+					imgui.PushFont(wanted2font)
+					if wanted == 1 then
+						imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+
+						imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+					elseif wanted == 2 then
+						imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+
+						imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+					elseif wanted == 3 then
+						imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 45))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+
+						imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 45))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+					elseif wanted == 4 then
+						imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 45))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 73))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+
+						imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 45))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 73))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+					elseif wanted == 5 then
+						imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 45))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 73))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 100))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+
+						imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 45))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 73))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 100))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+					elseif wanted == 6 then
+						imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 45))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 73))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 100))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365, 94.5 + 120))
+						imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
+
+						imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 45))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 73))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 100))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+						imgui.SetCursorPos(imgui.ImVec2(365, 92.5 + 120))
+						imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
+					end
+					imgui.PopFont()
+					imgui.PopStyleColor()
+					imgui.End()
 				end
-
-				imgui.PopFont()
-
-				imgui.PushFont(wanted2font)
-				if wanted == 1 then
-					imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-
-					imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-				elseif wanted == 2 then
-					imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-
-					imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-				elseif wanted == 3 then
-					imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 45))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-
-					imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 45))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-				elseif wanted == 4 then
-					imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 45))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 73))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-
-					imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 45))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 73))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-				elseif wanted == 5 then
-					imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 45))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 73))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 100))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-
-					imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 45))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 73))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 100))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-				elseif wanted == 6 then
-					imgui.SetCursorPos(imgui.ImVec2(365, 94.5))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 20))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 45))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 94.5 + 73))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 94.5 + 100))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365, 94.5 + 120))
-					imgui.IconColoredRGB("{000000}"..fa.ICON_FA_STAR)
-
-					imgui.SetCursorPos(imgui.ImVec2(365, 92.5))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 20))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 45))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 37, 92.5 + 73))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365 + 25, 92.5 + 100))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-					imgui.SetCursorPos(imgui.ImVec2(365, 92.5 + 120))
-					imgui.IconColoredRGB("{FFD700}"..fa.ICON_FA_STAR)
-				end
-				imgui.PopFont()
-				imgui.PopStyleColor()
-				imgui.End()
 			end
 		end
+		h.HideCursor = true
 	end
 )
 
@@ -2509,6 +2593,36 @@ local newFrame = imgui.OnFrame(
 								imgui.Image(logo[7], imgui.ImVec2(75, 75))
 								imgui.EndTooltip()
 							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'Spring', boolhud.lid,8) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[8], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'May', boolhud.lid,9) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[9], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
+							imgui.SameLine()
+							if imgui.RadioButtonIntPtr(u8'Summer', boolhud.lid,10) then
+								mainIni.hud.lid = boolhud.lid[0]
+								inicfg.save(mainIni, directIni)
+							end
+							if imgui.IsItemHovered() then
+								imgui.BeginTooltip()
+								imgui.Image(logo[10], imgui.ImVec2(75, 75))
+								imgui.EndTooltip()
+							end
 							imgui.Separator()
 							imgui.CenterTextColoredRGB(" Ваше максимальное ХП:")
 							if imgui.RadioButtonIntPtr(u8'100 HP', boolhud.maxhp,100) then
@@ -2565,12 +2679,12 @@ local newFrame = imgui.OnFrame(
 					hpfont, mainfont, 120.000000, 21.000000)
 
 					imgui.SetCursorPos(imgui.ImVec2(136.000000,45.000000));
-					if imgui.Checkbox(u8"MAC", features.mac) then
+					if imgui.Checkbox(u8"NotfAC", features.mac) then
 						mainIni.features.mac = features.mac[0]
 						inicfg.save(mainIni, directIni)
 					end
-					imgui.ezHint('MAC - Music After Connected\n'..
-					'Включает старую музыку, после подключения к серверу.',
+					imgui.ezHint('NotfAC - Notification After Connected\n'..
+					'Оповещает звуковым уведомлением, после подключения к серверу.',
 					hpfont, mainfont, 120.000000, 46.000000)
 
 					imgui.SetCursorPos(imgui.ImVec2(136.000000,70.000000));
@@ -2949,16 +3063,18 @@ local newFrame = imgui.OnFrame(
 			imgui.PushStyleVarFloat(imgui.StyleVar.Alpha, popupwindow.alpha)
 			if imgui.BeginPopupModal(u8'Информация по командам', false,  imgui.WindowFlags.NoResize + imgui.WindowFlags.AlwaysAutoResize) then
 				if list == 1 then
-					imgui.BeginChild("fastcmd",imgui.ImVec2(625, 220), true)
+					imgui.BeginChild("fastcmd",imgui.ImVec2(625, 225), true)
 					imgui.PushFont(mainfont)
 					imgui.TextColoredRGB("{FFA500}Быстрые команды.")
 					imgui.PopFont()
 					imgui.PushFont(smallfont)
-					imgui.TextColoredRGB("{E6E6FA}Это укрощённые стандартные команды. Подойдут, если Вам срочно что-то нужно сделать.\n" .. 
-					'{E6E6FA}	Например: {7FFFD4}найти дом, бизнес, посмотреть /members\n' ..
+					imgui.TextColoredRGB("{E6E6FA}Это упрощённые стандартные команды. Подойдут, если Вам срочно что-то нужно сделать.\n" .. 
+					'{E6E6FA}Например: {7FFFD4}найти дом, бизнес, посмотреть /members\n' ..
 					'{00BFFF}		Обычные:\n' ..
 					'{E6E6FA}			/fh {FFD700}[ID]{E6E6FA} - поиск дома\n' ..
 					'{E6E6FA}			/fbz {FFD700}[ID]{E6E6FA} - поиск бизнеса\n' ..
+					'{E6E6FA}			/ol - посмотреть количество нефти на водных нефтевышках {808080}(/oillist)\n' ..
+					'{E6E6FA}			/ogl - посмотреть количество нефти на наземных нефтевышках {808080}(/oilgroundlist)\n' ..
 					'{00BFFF}		Организационные:\n' ..
 					'{E6E6FA}			/jb - посмотреть свою успеваемость {808080}(/jobprogress)\n' ..
 					'{E6E6FA}			/cjb {FFD700}[ID]{E6E6FA} - проверка успеваемости сотрудника {808080}(/checkjobprogress) {FF0000}9+ rank{E6E6FA}\n' ..
@@ -2989,7 +3105,7 @@ local newFrame = imgui.OnFrame(
 				end
 
 				if list == 2 then
-					imgui.BeginChild("newcmd1",imgui.ImVec2(625, 220), true)
+					imgui.BeginChild("newcmd1",imgui.ImVec2(625, 225), true)
 					imgui.PushFont(mainfont)
 					imgui.TextColoredRGB("{FFA500}Новые команды.")
 					imgui.PopFont()
@@ -3037,7 +3153,7 @@ local newFrame = imgui.OnFrame(
 				end
 
 				if list == 3 then
-					imgui.BeginChild("newcmd2",imgui.ImVec2(625, 220), true)
+					imgui.BeginChild("newcmd2",imgui.ImVec2(625, 225), true)
 					imgui.PushFont(mainfont)
 					imgui.TextColoredRGB("{FFA500}Новые команды.")
 					imgui.PopFont()
@@ -3448,7 +3564,7 @@ function sampev.onServerMessage(color, text)
 	end	]]
 	if boolhud.notification[0] then
 		if text:find('Вам был добавлен предмет.+') then
-			local item = text:match("Вам был добавлен предмет '(.+)'%..+")
+			local item = text:match("Вам был добавлен предмет '(.+)'%..+'")
 			toast.Show(u8('{ffffff}Вам был добавлен предмет {ffff00}'..item), toast.TYPE.INFO, 6)
 			playVolume(notf, 1)
 		end
@@ -3609,6 +3725,14 @@ function sampev.onDisplayGameText(style, time, text)
 				ezMessage("AutoTT: TwinTurbo включён.")
 				sampSendChat('/style')
 			end
+		end
+	end
+
+	if features.correctdmg[0] then
+		if text:find('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed %d+ Sec.') then
+			dmgtime = text:match('~n~~n~~n~~n~~n~~n~~n~~n~~n~~n~~g~Jailed (%d+) Sec.')
+			text = string.format(conv("~n~~n~~n~~n~~n~~n~~n~~n~~y~Осталось:~n~~w~%s"), get_clock(dmgtime))
+			return {style, time, text}
 		end
 	end
 	--if text:find('.+') then print(text) end
@@ -3857,7 +3981,7 @@ function purchaseFuel(fuelIndex, fuelCount)
     raknetBitStreamWriteInt8(bs, 0)
     raknetBitStreamWriteInt8(bs, 0)
     raknetBitStreamWriteString(bs, str)
-    raknetBitStreamWriteInt32(bs, 1)
+    raknetBitStreamWriteInt32(bs, 0) --Если не работает изменить на 0 или 1
 	raknetBitStreamWriteInt8(bs, 0)
 	raknetBitStreamWriteInt8(bs, 0)
     raknetSendBitStreamEx(bs, 1, 7, 1)
@@ -3874,7 +3998,6 @@ function time()
 	        sesOnline[0] = sesOnline[0] + 1
 			onlineIni.onDay.online = onlineIni.onDay.online + 1
 			connectingTime = 0
-			_, pid = sampGetPlayerIdByCharHandle(playerPed)
 			servonl = tostring(sampGetPlayerCount())
 			name = sampGetPlayerNickname(pid)
 	    else
@@ -3946,12 +4069,14 @@ function carfunc()
 					local result, id = sampGetVehicleIdByCarHandle(target)
 					if result and not sampIsDialogActive() and not sampIsChatInputActive() and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
 						local idcar = getCarModel(target)
-						if idcar == 433 then
-							if wasKeyPressed(VK_RBUTTON) then
-								sampSendChat("/trunk " .. id)
+						if not idcar == 578 then
+							if idcar == 433 then
+								if wasKeyPressed(VK_RBUTTON) then
+									sampSendChat("/trunk " .. id)
+								end
+							else
+							sampSendChat("/trunk " .. id)
 							end
-						else
-						sampSendChat("/trunk " .. id)
 						end
 					end
 				end
@@ -4043,8 +4168,8 @@ function files_add()
 		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/panic.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/panic.mp3", function(id, status, p1, p2)
 		end)
 	end
-	if not doesFileExist('moonloader\\resource\\ezHelper\\oldarzmusic.mp3') then
-		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/oldarzmusic.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/oldarzmusic.mp3", function(id, status, p1, p2) end)
+	if not doesFileExist('moonloader\\resource\\ezHelper\\notfac.mp3') then
+		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/notfac.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/notfac.mp3", function(id, status, p1, p2) end)
 	end
 	if not doesFileExist('moonloader\\resource\\ezHelper\\bang.mp3') then
 		downloadUrlToFile("https://github.com/chapple01/ezHelper/blob/main/resource/ezHelper/bang.mp3?raw=true", getWorkingDirectory().."/resource/ezHelper/bang.mp3", function(id, status, p1, p2) end)
@@ -4077,7 +4202,7 @@ function files_add()
 		end)
 
 	end
-	if not doesFileExist('moonloader\\resource\\ezHelper\\arz07.png') or not doesFileExist('moonloader\\resource\\ezHelper\\logo\\easter.png') then
+	if not doesFileExist('moonloader\\resource\\ezHelper\\arz07.png') or not doesFileExist('moonloader\\resource\\ezHelper\\logo\\Summer.png') then
 		ezMessage("Загрузка картинок худа...")
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/arz07.png", getWorkingDirectory().."/resource/ezHelper/arz07.png", function(id, status, p1, p2) end)
 		
@@ -4088,6 +4213,9 @@ function files_add()
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/NewYear.png", getWorkingDirectory().."/resource/ezHelper/logo/NewYear.png", function(id, status, p1, p2) end)
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/saintV.png", getWorkingDirectory().."/resource/ezHelper/logo/saintV.png", function(id, status, p1, p2) end)
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/easter.png", getWorkingDirectory().."/resource/ezHelper/logo/easter.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/spring.png", getWorkingDirectory().."/resource/ezHelper/logo/spring.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/May.png", getWorkingDirectory().."/resource/ezHelper/logo/May.png", function(id, status, p1, p2) end)
+		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/logo/Summer.png", getWorkingDirectory().."/resource/ezHelper/logo/Summer.png", function(id, status, p1, p2) end)
 		
 		downloadUrlToFile("https://raw.githubusercontent.com/chapple01/ezHelper/main/resource/ezHelper/XPayDay.png", getWorkingDirectory().."/resource/ezHelper/XPayDay.png", function(id, status, p1, p2) end)
 		
@@ -4103,15 +4231,28 @@ function files_add()
 	end
 end
 
+function number_separator(n) 
+	if n:find('%d+') then
+		local left, num, right = string.match(n,'^([^%d]*%d)(%d*)(.-)$')
+		return left..(num:reverse():gsub('(%d%d%d)','%1 '):reverse())..right
+	else
+		return 'Ошибка'
+	end
+end
+
 function int_separator(int)
 	int = tostring(int)
-	if int ~= nil and string.len(int) > 3 then
-		local b, e = ("%d"):format(int):gsub("^%-", "")
-		local c = b:reverse():gsub("%d%d%d", "%1.")
-		local d = c:reverse():gsub("^%.", "")
-		return int:gsub(int, (e == 1 and "-" or "") .. d)
+	if int:find('%d+') then
+		if int ~= nil and string.len(int) > 3 then
+			local b, e = ("%d"):format(int):gsub("^%-", "")
+			local c = b:reverse():gsub("%d%d%d", "%1.")
+			local d = c:reverse():gsub("^%.", "")
+			return int:gsub(int, (e == 1 and "-" or "") .. d)
+		end
+		return int
+	else
+		return 'Ошибка'
 	end
-	return int
 end
 
 function conv(text) --Русские буквы в GameText
@@ -4920,6 +5061,22 @@ return (tModKeys[id] or false) or (tBlockChar[id] or false)
 end
 
 addEventHandler("onWindowMessage", function (msg, wparam, lparam)
+
+--==______________ Блокировка микрофона ______________==--
+	if msg == wm.WM_KILLFOCUS then
+		blockkey = true
+	elseif msg == wm.WM_SETFOCUS then
+		blockkey = false
+	end
+
+	if blockkey then
+		if msg == 0x0100 then
+			if wparam == VK_Z then
+				consumeWindowMessage(true, true)
+			end
+		end
+	end
+
     if tHotKeyData.edit ~= nil and msg == wm.WM_CHAR then
         if tBlockChar[wparam] then
             consumeWindowMessage(true, true)
