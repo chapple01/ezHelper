@@ -1,6 +1,6 @@
 script_name('ezHelper')
 script_author('CHAPPLE')
-script_version("1.6.0")
+script_version("1.6.1")
 script_properties('work-in-pause')
 
 local tag = "{fff000}[ezHelper]: {ffffff}"
